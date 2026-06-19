@@ -1,7 +1,7 @@
 import axios from "axios";
 import { createContext, useState, useEffect } from "react";
 import httpStatus from "http-status";
-import { server_url } from "../config";
+import server_url from "../environment.js";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext({});

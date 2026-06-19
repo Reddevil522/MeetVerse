@@ -1,28 +1,4 @@
-/**
- * VideoCall.jsx — Premium Video Call UI
- * Google Meet-inspired layout: lobby → room with floating controls.
- *
- * FIXES in this pass:
- *  - BLACK TILE FIX: localVideoRef.srcObject is now set via a robust helper
- *    (attachLocalStream) that retries with requestAnimationFrame if the <video>
- *    element isn't painted yet. Called from joinCall AND from the join-approved
- *    socket handler, so there's no race between React's paint cycle and stream
- *    assignment.
- *  - REMOTE BLACK TILE FIX: getOrCreatePeerConnection now checks
- *    localStreamRef.current at call-time (not closure-time), so tracks are
- *    always added to peer connections even when they're created after the
- *    stream is ready.
- *  - LOBBY PREVIEW FIX: lobby now shows a live camera preview so users can
- *    verify their camera before joining.
- *  - Join now resolves in ~2s: the lobby permission-check stream is reused.
- *  - connectSocket no longer depends on `username` to avoid listener teardown.
- *  - meeting-ended uses isHostRef to avoid stale closure.
- *  - handleScreen stops tracks from the actual source-of-truth stream ref.
- *  - module-level `connections` map is reset on mount.
- *  - sendMessage also emits stop-typing so the indicator can't get stuck.
- *  - participantCount initializes to 1 for the host immediately.
- *  - host action handlers wrapped in useCallback.
- */
+
 import { useRef, useState, useEffect, useCallback, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -38,7 +14,7 @@ import {
 import { io } from "socket.io-client";
 import "../public/CSS/VideoCall.css";
 import "../public/CSS/WaitingRoom.css";
-import { server_url } from "../config";
+import server_url from "../environment.js";
 
 // Global peer connections map: socketId → RTCPeerConnection
 let connections = {};
