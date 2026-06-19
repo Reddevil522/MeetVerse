@@ -755,37 +755,606 @@
 }
 
 /* ─── RESPONSIVE ─── */
+
+/* Tablet & large phones (landscape phones, small tablets) */
 @media (max-width: 768px) {
+    .vc-lobby {
+        padding: 16px;
+        align-items: flex-start;
+        overflow-y: auto;
+    }
+
     .lobby-container {
         grid-template-columns: 1fr;
+        gap: 20px;
+        margin: auto 0;
     }
 
     .lobby-preview {
         max-width: 480px;
+        width: 100%;
         margin: 0 auto;
     }
 
+    .lobby-form {
+        padding: 28px 22px;
+    }
+
+    /* Video grid: cap at 2 columns once space gets tight */
+    .vc-grid.count-3,
+    .vc-grid.count-4,
+    .vc-grid.count-5,
+    .vc-grid.count-6 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .vc-grid {
+        overflow-y: auto;
+        align-content: flex-start;
+    }
+
+    /* Chat becomes a near-fullscreen overlay instead of a fixed sidebar */
     .vc-chat-panel {
         position: fixed;
         right: 0;
+        left: 0;
         top: 0;
         bottom: 0;
+        width: 100%;
         z-index: 50;
     }
 
+    .chat-panel-header {
+        padding-top: env(safe-area-inset-top, 0px);
+        height: calc(56px + env(safe-area-inset-top, 0px));
+    }
+
+    .chat-input-row {
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Top bar: tighten spacing, allow it to truncate gracefully */
+    .vc-topbar {
+        padding: 0 12px;
+        gap: 8px;
+    }
+
+    .vc-topbar-left {
+        gap: 8px;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .vc-meeting-title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .vc-topbar-right {
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    .vc-participant-count {
+        padding: 5px 9px;
+    }
+
+    /* Bottom controls bar: hide the clock/code readout, center the buttons */
     .controls-left {
         display: none;
+    }
+
+    .vc-controls-bar {
+        padding: 0 12px;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        justify-content: center;
+        gap: 18px;
+    }
+
+    .controls-center {
+        gap: 6px;
     }
 
     .ctrl-label {
         display: none;
     }
+}
 
-    .vc-topbar {
-        padding: 0 12px;
+/* Phones */
+@media (max-width: 480px) {
+    .vc-lobby {
+        padding: 12px;
+    }
+
+    .lobby-logo {
+        font-size: 1rem;
+        margin-bottom: 18px;
+    }
+
+    .lobby-form h2 {
+        font-size: 1.3rem;
+    }
+
+    .lobby-form p {
+        margin-bottom: 20px;
+    }
+
+    .lobby-form {
+        padding: 22px 18px;
+    }
+
+    /* Stack every tile full-width so phones get a usable, scrollable feed */
+    .vc-grid.count-1,
+    .vc-grid.count-2,
+    .vc-grid.count-3,
+    .vc-grid.count-4,
+    .vc-grid.count-5,
+    .vc-grid.count-6 {
+        grid-template-columns: 1fr;
+    }
+
+    .vc-grid {
+        padding: 8px;
+        gap: 8px;
+    }
+
+    .vc-meeting-id {
+        display: none;
     }
 
     .vc-controls-bar {
-        padding: 0 12px;
+        height: 72px;
+        gap: 10px;
+    }
+
+    .controls-center {
+        gap: 4px;
+    }
+
+    .ctrl-icon-btn {
+        width: 42px;
+        height: 42px;
+        font-size: 0.92rem;
+    }
+
+    /* Free up room for the five action buttons; link is already in the top bar */
+    .controls-right {
+        display: none;
+    }
+}
+
+/* Very narrow phones */
+@media (max-width: 360px) {
+    .vc-topbar-left {
+        gap: 6px;
+    }
+
+    .vc-meeting-title {
+        font-size: 0.82rem;
+    }
+
+    .ctrl-icon-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    .controls-center {
+        gap: 2px;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+/* ═══════════════════════════════════════════════════════════
+   MEETVERSE — Focus Mode & Fullscreen CSS
+   Drop this into your VideoCall.css (or import separately)
+═══════════════════════════════════════════════════════════ */
+
+/* ─── TILE WRAPPER (motion.div around every tile) ─── */
+.vc-tile-wrapper {
+    position: relative;
+    border-radius: var(--radius-lg);
+    overflow: visible;
+    will-change: transform;
+}
+
+.vc-tile-wrapper .vc-tile {
+    width: 100%;
+    height: 100%;
+}
+
+/* ─── FOCUS MODE LAYOUT ──────────────────────────────────── */
+.vc-grid.vc-focus-mode {
+    grid-template-columns: 3fr 1fr;
+    align-items: stretch;
+    gap: 8px;
+    overflow: hidden;
+}
+
+/* Focused tile spans all rows in column 1 */
+.vc-tile-main {
+    grid-column: 1;
+    border-radius: var(--radius-lg);
+    box-shadow:
+        0 0 0 2px rgba(99, 102, 241, 0.55),
+        0 8px 32px rgba(0, 0, 0, 0.55);
+    animation: vc-focus-in 0.35s ease forwards;
+    cursor: default;
+}
+
+/* Thumbnails stack in column 2 */
+.vc-tile-thumb {
+    grid-column: 2;
+    min-height: 80px;
+    border-radius: var(--radius-md);
+    opacity: 0.85;
+    transition: opacity 0.18s ease, box-shadow 0.18s ease;
+    cursor: pointer;
+}
+
+.vc-tile-thumb:hover {
+    opacity: 1;
+    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.2), 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.vc-tile-thumb .vc-tile {
+    border-radius: var(--radius-md);
+}
+
+.vc-tile-thumb .vc-tile-name {
+    font-size: 0.68rem;
+    padding: 2px 7px;
+    bottom: 6px;
+    left: 8px;
+}
+
+.vc-tile-thumb .vc-tile-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+}
+
+/* ─── EXIT FOCUS BUTTON ──────────────────────────────────── */
+.vc-exit-focus-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 30;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.vc-tile-wrapper:hover .vc-exit-focus-btn {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Always slightly visible on the main tile */
+.vc-tile-main .vc-exit-focus-btn {
+    opacity: 0.7;
+    pointer-events: auto;
+}
+
+.vc-exit-focus-btn:hover {
+    background: rgba(239, 68, 68, 0.75);
+    border-color: rgba(239, 68, 68, 0.5);
+    transform: scale(1.1);
+    opacity: 1 !important;
+}
+
+/* ─── FULLSCREEN BUTTON ──────────────────────────────────── */
+.vc-fullscreen-btn {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    z-index: 25;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: rgba(255, 255, 255, 0.88);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    /* Hidden on desktop until hover */
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.vc-tile:hover .vc-fullscreen-btn,
+.vc-tile-wrapper:hover .vc-fullscreen-btn {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.vc-fullscreen-btn:hover {
+    background: rgba(99, 102, 241, 0.7);
+    border-color: rgba(99, 102, 241, 0.5);
+    transform: scale(1.08);
+}
+
+/* Thumbnail: shift up so it doesn't overlap name badge */
+.vc-tile-thumb .vc-fullscreen-btn {
+    bottom: 26px;
+    right: 6px;
+    width: 22px;
+    height: 22px;
+}
+
+/* ─── FULLSCREEN API STATE ───────────────────────────────── */
+/*
+   All vendor prefixes needed for Chrome/Edge (standard),
+   Safari (webkit), and older IE/Edge (ms).
+*/
+
+/* The tile element itself in fullscreen */
+.vc-tile:fullscreen,
+.vc-tile:-webkit-full-screen,
+.vc-tile:-moz-full-screen,
+.vc-tile:-ms-fullscreen {
+    border-radius: 0 !important;
+    border: none !important;
+    background: #000 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+}
+
+/* Video fills the screen, contain keeps faces unclipped */
+.vc-tile:fullscreen video,
+.vc-tile:-webkit-full-screen video,
+.vc-tile:-moz-full-screen video,
+.vc-tile:-ms-fullscreen video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+}
+
+/* Avatar when camera is off and tile is fullscreen */
+.vc-tile:fullscreen .vc-tile-no-video,
+.vc-tile:-webkit-full-screen .vc-tile-no-video,
+.vc-tile:-moz-full-screen .vc-tile-no-video,
+.vc-tile:-ms-fullscreen .vc-tile-no-video {
+    background: #060c18;
+}
+
+.vc-tile:fullscreen .vc-tile-avatar,
+.vc-tile:-webkit-full-screen .vc-tile-avatar,
+.vc-tile:-moz-full-screen .vc-tile-avatar,
+.vc-tile:-ms-fullscreen .vc-tile-avatar {
+    width: 120px;
+    height: 120px;
+    font-size: 3rem;
+}
+
+/* Name badge */
+.vc-tile:fullscreen .vc-tile-name,
+.vc-tile:-webkit-full-screen .vc-tile-name,
+.vc-tile:-moz-full-screen .vc-tile-name,
+.vc-tile:-ms-fullscreen .vc-tile-name {
+    font-size: 0.95rem;
+    padding: 6px 16px;
+    bottom: 20px;
+    left: 20px;
+}
+
+/* Fullscreen button: always visible, larger hit target */
+.vc-tile:fullscreen .vc-fullscreen-btn,
+.vc-tile:-webkit-full-screen .vc-fullscreen-btn,
+.vc-tile:-moz-full-screen .vc-fullscreen-btn,
+.vc-tile:-ms-fullscreen .vc-fullscreen-btn {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    bottom: 20px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    font-size: 1rem;
+    background: rgba(0, 0, 0, 0.6);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* ─── CURSOR HINT: normal grid, multiple participants ────── */
+.vc-grid:not(.vc-focus-mode) .vc-tile-wrapper:not(:only-child) {
+    cursor: pointer;
+}
+
+/* ─── FOCUS ENTRY ANIMATION ─────────────────────────────── */
+@keyframes vc-focus-in {
+    0% {
+        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.6);
+    }
+
+    50% {
+        box-shadow: 0 0 0 6px rgba(99, 102, 241, 0.18);
+    }
+
+    100% {
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.55), 0 8px 32px rgba(0, 0, 0, 0.55);
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════════════════ */
+
+/* ── Tablet (≤768px) ── */
+@media (max-width: 768px) {
+
+    /*
+     Focus layout: vertical stack.
+     Main tile takes most height, thumbnails form a
+     horizontal scrollable strip below.
+    */
+    .vc-grid.vc-focus-mode {
+        display: flex !important;
+        flex-direction: column !important;
+        grid-template-columns: unset !important;
+        grid-template-rows: unset !important;
+        overflow: hidden;
+        padding: 8px;
+        gap: 8px;
+    }
+
+    .vc-tile-main {
+        flex: 1 1 auto;
+        grid-column: unset !important;
+        grid-row: unset !important;
+        min-height: 200px;
+        order: 0;
+    }
+
+    /* Thumbnail strip — horizontal scroll */
+    .vc-grid.vc-focus-mode .vc-tile-thumb {
+        grid-column: unset !important;
+        grid-row: unset !important;
+        order: 1;
+        flex: 0 0 auto;
+    }
+
+    /*
+     Wrap all thumbs in a flex row.
+     We can't add a real wrapper element, so we make the grid a column
+     flex container, but force the thumbs to line up in a
+     single scrollable row using a CSS trick:
+     the LAST thumb gets a ::after that forces a new "row" visually.
+     Simpler: just let them stack vertically (mobile screen is narrow).
+    */
+    .vc-tile-thumb {
+        width: 100%;
+        min-height: 100px;
+        max-height: 130px;
+    }
+
+    /* On touch devices — buttons always visible (no hover) */
+    .vc-fullscreen-btn {
+        opacity: 0.8 !important;
+        pointer-events: auto !important;
+    }
+
+    .vc-exit-focus-btn {
+        opacity: 0.8 !important;
+        pointer-events: auto !important;
+    }
+}
+
+/* ── Phones (≤480px) ── */
+@media (max-width: 480px) {
+
+    .vc-grid.vc-focus-mode {
+        padding: 6px;
+        gap: 6px;
+    }
+
+    .vc-tile-main {
+        min-height: 180px;
+        /* Tighter focus ring on small screens */
+        box-shadow:
+            0 0 0 1.5px rgba(99, 102, 241, 0.5),
+            0 4px 16px rgba(0, 0, 0, 0.5);
+    }
+
+    .vc-tile-thumb {
+        min-height: 85px;
+        max-height: 110px;
+    }
+
+    /* Fullscreen button — bigger hit target for thumbs */
+    .vc-fullscreen-btn {
+        width: 30px !important;
+        height: 30px !important;
+        bottom: 8px !important;
+        right: 8px !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        border-radius: 50% !important;
+    }
+
+    .vc-tile-thumb .vc-fullscreen-btn {
+        width: 26px !important;
+        height: 26px !important;
+        bottom: 28px !important;
+        right: 6px !important;
+    }
+
+    .vc-exit-focus-btn {
+        width: 26px !important;
+        height: 26px !important;
+        top: 8px !important;
+        right: 8px !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
+    /* In fullscreen on phone: use cover so no black bars */
+    .vc-tile:fullscreen video,
+    .vc-tile:-webkit-full-screen video {
+        object-fit: cover !important;
+    }
+
+    /* Fullscreen button in fullscreen: bottom-center on phone */
+    .vc-tile:fullscreen .vc-fullscreen-btn,
+    .vc-tile:-webkit-full-screen .vc-fullscreen-btn {
+        bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+        right: 16px;
+        width: 48px;
+        height: 48px;
+        font-size: 1.1rem;
+    }
+
+    /* Name badge clears home-bar on iOS */
+    .vc-tile:fullscreen .vc-tile-name,
+    .vc-tile:-webkit-full-screen .vc-tile-name {
+        bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+/* ── Very small phones (≤360px) ── */
+@media (max-width: 360px) {
+
+    .vc-tile-thumb {
+        min-height: 75px;
+        max-height: 95px;
+    }
+
+    .vc-fullscreen-btn {
+        width: 26px !important;
+        height: 26px !important;
+    }
+}
+
+/* ─── Reduced motion ─────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .vc-tile-main {
+        animation: none;
+    }
+
+    .vc-tile-wrapper,
+    .vc-tile-thumb,
+    .vc-exit-focus-btn,
+    .vc-fullscreen-btn {
+        transition: none;
     }
 }

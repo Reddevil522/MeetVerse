@@ -1,4 +1,3 @@
-
 import { useRef, useState, useEffect, useCallback, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,6 +9,7 @@ import {
     FaPhoneSlash, FaDesktop,
     FaComments, FaTimes,
     FaUsers, FaCopy, FaLink, FaPaperPlane,
+    FaExpand, FaCompress,
 } from "react-icons/fa";
 import { io } from "socket.io-client";
 import "../public/CSS/VideoCall.css";
@@ -42,8 +42,29 @@ const acquireMediaWithTimeout = (constraints, timeoutMs = MEDIA_ACQUIRE_TIMEOUT_
     });
 };
 
+// FIX: cross-browser fullscreen helpers. Some browsers (older Safari) only
+// expose the webkit-prefixed variants, so every call site goes through these
+// instead of calling el.requestFullscreen() directly.
+const requestElementFullscreen = (el) => {
+    if (!el) return Promise.resolve();
+    const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+    if (!fn) return Promise.reject(new Error("Fullscreen API not supported"));
+    const result = fn.call(el);
+    return result && typeof result.then === "function" ? result : Promise.resolve();
+};
+
+const exitDocumentFullscreen = () => {
+    const fn = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+    if (!fn) return Promise.resolve();
+    const result = fn.call(document);
+    return result && typeof result.then === "function" ? result : Promise.resolve();
+};
+
+const getFullscreenElement = () =>
+    document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement || null;
+
 // ── Remote tile (stable ref) ──────────────────────────────────────────────────
-function RemoteVideo({ item, index, participantNames, status }) {
+function RemoteVideo({ item, index, participantNames, status, tileRef, onFullscreen, isFullscreenActive }) {
     const ref = useRef(null);
     useEffect(() => {
         if (ref.current && item.stream) ref.current.srcObject = item.stream;
@@ -54,7 +75,7 @@ function RemoteVideo({ item, index, participantNames, status }) {
     const isVideoOff = status?.isVideoOff;
 
     return (
-        <div className="vc-tile">
+        <div className="vc-tile" ref={tileRef} data-tile-id={item.id}>
             <video ref={ref} autoPlay playsInline style={{ display: isVideoOff ? 'none' : 'block' }} />
             {isVideoOff && (
                 <div className="vc-tile-no-video">
@@ -67,6 +88,15 @@ function RemoteVideo({ item, index, participantNames, status }) {
                 {displayName}
                 {isMuted && <span style={{ marginLeft: "6px", color: "#ef4444", display: "flex" }}><FaMicrophoneSlash size={12} /></span>}
             </div>
+            <button
+                type="button"
+                className="vc-fullscreen-btn"
+                onClick={(e) => { e.stopPropagation(); onFullscreen(); }}
+                title={isFullscreenActive ? "Exit fullscreen" : "Fullscreen"}
+                aria-label={isFullscreenActive ? "Exit fullscreen" : "Enter fullscreen"}
+            >
+                {isFullscreenActive ? <FaCompress size={13} /> : <FaExpand size={13} />}
+            </button>
         </div>
     );
 }
@@ -91,6 +121,7 @@ export default function VideoCall() {
     const joinCallRef = useRef(null);
     const isHostRef = useRef(false);
     const mediaCheckPromiseRef = useRef(null);
+    const tileRefs = useRef({});                 // FIX: id -> tile DOM node, used for the Fullscreen API
 
     // ── State ─────────────────────────────────────────────────────────────────
     const [videoAvailable, setVideoAvailable] = useState(true);
@@ -122,6 +153,13 @@ export default function VideoCall() {
     const [autoApprove, setAutoApprove] = useState(false);
     const [rejectReason, setRejectReason] = useState("");
     const [showHostDashboard, setShowHostDashboard] = useState(true);
+
+    // FIX: Focus mode + fullscreen state. "focusedId" is either null, "local",
+    // or a remote participant's socket id. It only ever changes the layout via
+    // CSS — the underlying <video> elements stay mounted exactly where they
+    // were, so WebRTC tracks/srcObject assignments are never disturbed.
+    const [focusedId, setFocusedId] = useState(null);
+    const [fullscreenTileId, setFullscreenTileId] = useState(null);
 
     // Pre-fill username from auth context
     useEffect(() => {
@@ -251,15 +289,80 @@ export default function VideoCall() {
         }
     }, [askForUsername, waitingRoomStatus, attachLocalStream]);
 
+    // ── FIX: Focus mode — track the Fullscreen API state and react to it ──────
+    // Esc to exit is native browser behavior and needs no handling here; this
+    // effect just keeps our UI (icons, classes) in sync with the real state,
+    // and clears focus on a participant who has just left the call.
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            const el = getFullscreenElement();
+            setFullscreenTileId(el ? el.dataset?.tileId || null : null);
+        };
+        document.addEventListener("fullscreenchange", handleFullscreenChange);
+        document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+        document.addEventListener("MSFullscreenChange", handleFullscreenChange);
+        return () => {
+            document.removeEventListener("fullscreenchange", handleFullscreenChange);
+            document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+            document.removeEventListener("MSFullscreenChange", handleFullscreenChange);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (focusedId && focusedId !== "local" && !videos.some((v) => v.id === focusedId)) {
+            setFocusedId(null);
+        }
+    }, [videos, focusedId]);
+
     // ── Cleanup on unmount ────────────────────────────────────────────────────
     useEffect(() => {
         return () => {
+            if (getFullscreenElement()) {
+                exitDocumentFullscreen().catch(() => { });
+            }
             localStreamRef.current?.getTracks().forEach((t) => t.stop());
             Object.values(connections).forEach((pc) => pc.close());
             connections = {};
             socketRef.current?.disconnect();
         };
     }, []);
+
+    // =========================================================================
+    // Focus mode + Fullscreen API
+    // =========================================================================
+    const handleTileClick = useCallback((id) => {
+        // Focusing only makes sense when there is more than one tile on screen.
+        setFocusedId((prev) => (prev === id ? null : id));
+    }, []);
+
+    const exitFocusMode = useCallback((e) => {
+        e?.stopPropagation();
+        setFocusedId(null);
+    }, []);
+
+    const toggleTileFullscreen = useCallback((id) => {
+        const el = tileRefs.current[id];
+        if (!el) return;
+        const current = getFullscreenElement();
+        if (current === el) {
+            exitDocumentFullscreen().catch((err) => console.error("Exit fullscreen failed:", err));
+        } else {
+            const proceed = () => requestElementFullscreen(el).catch((err) => {
+                console.error("Fullscreen request failed:", err);
+                toast?.error?.("Fullscreen isn't available right now.");
+            });
+            if (current) {
+                exitDocumentFullscreen().then(proceed).catch(proceed);
+            } else {
+                proceed();
+            }
+        }
+    }, [toast]);
+
+    const handleTileDoubleClick = useCallback((e, id) => {
+        e.stopPropagation();
+        toggleTileFullscreen(id);
+    }, [toggleTileFullscreen]);
 
     // =========================================================================
     // WebRTC helpers
@@ -362,6 +465,7 @@ export default function VideoCall() {
         }
         setVideos((prev) => prev.filter((v) => v.id !== leftId));
         setParticipantCount((n) => Math.max(0, n - 1));
+        delete tileRefs.current[leftId];
     }, []);
 
     // =========================================================================
@@ -828,6 +932,9 @@ export default function VideoCall() {
 
     const endCall = () => {
         try {
+            if (getFullscreenElement()) {
+                exitDocumentFullscreen().catch(() => { });
+            }
             if (isHost) {
                 socketRef.current?.emit("end-meeting-all", window.location.pathname);
             }
@@ -858,6 +965,10 @@ export default function VideoCall() {
 
     const meetingCode = window.location.pathname.substring(1);
     const gridCount = videos.length + 1;
+    const isFocusMode = !!focusedId && gridCount > 1;
+    // When focused, exactly one tile becomes "main" and every other tile
+    // becomes a thumbnail — so the thumb count is always (total tiles - 1).
+    const thumbRowCount = Math.max(gridCount - 1, 1);
 
     // =========================================================================
     // Render
@@ -938,14 +1049,14 @@ export default function VideoCall() {
                                 </p>
 
                                 {/* Meeting code display */}
-                                <div style={{ marginBottom: 20, padding: "10px 14px", background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: "var(--radius-sm)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                    <div>
+                                <div style={{ marginBottom: 20, padding: "10px 14px", background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: "var(--radius-sm)", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                                    <div style={{ minWidth: 0 }}>
                                         <div style={{ fontSize: "0.72rem", color: "var(--text-subtle)", marginBottom: 2 }}>Meeting Code</div>
-                                        <code style={{ fontSize: "0.95rem", color: "var(--primary-light)", fontWeight: 700 }}>{meetingCode}</code>
+                                        <code style={{ fontSize: "0.95rem", color: "var(--primary-light)", fontWeight: 700, wordBreak: "break-all" }}>{meetingCode}</code>
                                     </div>
                                     <button
                                         onClick={copyLink}
-                                        style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: "var(--radius-xs)", padding: "6px 12px", color: "var(--primary-light)", fontSize: "0.8rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}
+                                        style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: "var(--radius-xs)", padding: "6px 12px", color: "var(--primary-light)", fontSize: "0.8rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontWeight: 600, flexShrink: 0 }}
                                     >
                                         <FaCopy /> Copy Link
                                     </button>
@@ -1114,23 +1225,90 @@ export default function VideoCall() {
 
                     {/* ── VIDEO AREA + CHAT ── */}
                     <div className="vc-video-area">
-                        <div className={`vc-grid count-${Math.min(gridCount, 6)} ${showModal ? "chat-open" : ""}`}>
+                        <div
+                            className={`vc-grid ${isFocusMode ? "vc-focus-mode" : `count-${Math.min(gridCount, 6)}`} ${showModal ? "chat-open" : ""}`}
+                            style={isFocusMode ? { gridTemplateRows: `repeat(${thumbRowCount}, minmax(80px, 1fr))` } : undefined}
+                        >
                             {/* Local tile */}
-                            <div className="vc-tile">
-                                <video ref={localVideoRef} autoPlay muted playsInline />
-                                {!video && (
-                                    <div className="vc-tile-no-video">
-                                        <div className="vc-tile-avatar">
-                                            {username?.charAt(0)?.toUpperCase() || "Y"}
+                            <motion.div
+                                layout
+                                transition={{ type: "spring", damping: 28, stiffness: 280 }}
+                                className={`vc-tile-wrapper ${focusedId === "local" ? "vc-tile-main" : isFocusMode ? "vc-tile-thumb" : ""}`}
+                                style={focusedId === "local" ? { gridRow: `1 / ${thumbRowCount + 1}` } : undefined}
+                                onClick={() => gridCount > 1 && handleTileClick("local")}
+                                onDoubleClick={(e) => handleTileDoubleClick(e, "local")}
+                            >
+                                <div
+                                    className="vc-tile"
+                                    ref={(el) => { tileRefs.current["local"] = el; }}
+                                    data-tile-id="local"
+                                >
+                                    <video ref={localVideoRef} autoPlay muted playsInline />
+                                    {!video && (
+                                        <div className="vc-tile-no-video">
+                                            <div className="vc-tile-avatar">
+                                                {username?.charAt(0)?.toUpperCase() || "Y"}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
-                                <div className="vc-tile-name">{username || "You"} (You)</div>
-                            </div>
+                                    )}
+                                    <div className="vc-tile-name">{username || "You"} (You)</div>
+                                    {focusedId === "local" && (
+                                        <button
+                                            type="button"
+                                            className="vc-exit-focus-btn"
+                                            onClick={exitFocusMode}
+                                            title="Exit focus view"
+                                            aria-label="Exit focus view"
+                                        >
+                                            <FaTimes size={12} />
+                                        </button>
+                                    )}
+                                    {gridCount > 1 && (
+                                        <button
+                                            type="button"
+                                            className="vc-fullscreen-btn"
+                                            onClick={(e) => { e.stopPropagation(); toggleTileFullscreen("local"); }}
+                                            title={fullscreenTileId === "local" ? "Exit fullscreen" : "Fullscreen"}
+                                            aria-label={fullscreenTileId === "local" ? "Exit fullscreen" : "Enter fullscreen"}
+                                        >
+                                            {fullscreenTileId === "local" ? <FaCompress size={13} /> : <FaExpand size={13} />}
+                                        </button>
+                                    )}
+                                </div>
+                            </motion.div>
 
                             {/* Remote tiles */}
                             {videos.map((item, index) => (
-                                <RemoteVideo key={item.id} item={item} index={index} participantNames={participantNames} status={participantStatuses[item.id]} />
+                                <motion.div
+                                    key={item.id}
+                                    layout
+                                    transition={{ type: "spring", damping: 28, stiffness: 280 }}
+                                    className={`vc-tile-wrapper ${focusedId === item.id ? "vc-tile-main" : isFocusMode ? "vc-tile-thumb" : ""}`}
+                                    style={focusedId === item.id ? { gridRow: `1 / ${thumbRowCount + 1}` } : undefined}
+                                    onClick={() => handleTileClick(item.id)}
+                                    onDoubleClick={(e) => handleTileDoubleClick(e, item.id)}
+                                >
+                                    <RemoteVideo
+                                        item={item}
+                                        index={index}
+                                        participantNames={participantNames}
+                                        status={participantStatuses[item.id]}
+                                        tileRef={(el) => { tileRefs.current[item.id] = el; }}
+                                        onFullscreen={() => toggleTileFullscreen(item.id)}
+                                        isFullscreenActive={fullscreenTileId === item.id}
+                                    />
+                                    {focusedId === item.id && (
+                                        <button
+                                            type="button"
+                                            className="vc-exit-focus-btn"
+                                            onClick={exitFocusMode}
+                                            title="Exit focus view"
+                                            aria-label="Exit focus view"
+                                        >
+                                            <FaTimes size={12} />
+                                        </button>
+                                    )}
+                                </motion.div>
                             ))}
                         </div>
 
