@@ -16,7 +16,6 @@ import "../public/CSS/VideoCall.css";
 import "../public/CSS/WaitingRoom.css";
 import server_url from "../environment.js";
 
-// Global peer connections map: socketId → RTCPeerConnection
 let connections = {};
 
 const peerConfigConnections = {
@@ -42,9 +41,6 @@ const acquireMediaWithTimeout = (constraints, timeoutMs = MEDIA_ACQUIRE_TIMEOUT_
     });
 };
 
-// FIX: cross-browser fullscreen helpers. Some browsers (older Safari) only
-// expose the webkit-prefixed variants, so every call site goes through these
-// instead of calling el.requestFullscreen() directly.
 const requestElementFullscreen = (el) => {
     if (!el) return Promise.resolve();
     const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
@@ -63,11 +59,28 @@ const exitDocumentFullscreen = () => {
 const getFullscreenElement = () =>
     document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement || null;
 
-// ── Remote tile (stable ref) ──────────────────────────────────────────────────
+// ── FIX 1: RemoteVideo — stable ref + immediate attach on mount ──────────────
 function RemoteVideo({ item, index, participantNames, status, tileRef, onFullscreen, isFullscreenActive }) {
     const ref = useRef(null);
+
+    // FIX: attach stream when it changes
     useEffect(() => {
-        if (ref.current && item.stream) ref.current.srcObject = item.stream;
+        if (!item.stream) return;
+        const el = ref.current;
+        if (!el) return;
+        if (el.srcObject !== item.stream) {
+            el.srcObject = item.stream;
+            el.play().catch(() => { });
+        }
+    }, [item.stream]);
+
+    // FIX: also attach immediately when the element mounts
+    const setRef = useCallback((el) => {
+        ref.current = el;
+        if (el && item.stream) {
+            el.srcObject = item.stream;
+            el.play().catch(() => { });
+        }
     }, [item.stream]);
 
     const displayName = participantNames[item.id] || `Participant ${index + 1}`;
@@ -76,7 +89,21 @@ function RemoteVideo({ item, index, participantNames, status, tileRef, onFullscr
 
     return (
         <div className="vc-tile" ref={tileRef} data-tile-id={item.id}>
-            <video ref={ref} autoPlay playsInline style={{ display: isVideoOff ? 'none' : 'block' }} />
+            <video
+                ref={setRef}
+                autoPlay
+                playsInline
+                style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    display: isVideoOff ? "none" : "block",
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    zIndex: 1,
+                }}
+            />
             {isVideoOff && (
                 <div className="vc-tile-no-video">
                     <div className="vc-tile-avatar">
@@ -84,9 +111,13 @@ function RemoteVideo({ item, index, participantNames, status, tileRef, onFullscr
                     </div>
                 </div>
             )}
-            <div className="vc-tile-name" style={{ display: 'flex', alignItems: 'center' }}>
+            <div className="vc-tile-name" style={{ display: "flex", alignItems: "center", zIndex: 3, position: "relative" }}>
                 {displayName}
-                {isMuted && <span style={{ marginLeft: "6px", color: "#ef4444", display: "flex" }}><FaMicrophoneSlash size={12} /></span>}
+                {isMuted && (
+                    <span style={{ marginLeft: "6px", color: "#ef4444", display: "flex" }}>
+                        <FaMicrophoneSlash size={12} />
+                    </span>
+                )}
             </div>
             <button
                 type="button"
@@ -109,11 +140,10 @@ export default function VideoCall() {
     const { userData } = useContext(AuthContext);
     const toast = useToast();
 
-    // ── Refs ──────────────────────────────────────────────────────────────────
     const socketRef = useRef(null);
     const socketIdRef = useRef(null);
     const localVideoRef = useRef(null);
-    const lobbyVideoRef = useRef(null);          // FIX: separate ref for lobby preview
+    const lobbyVideoRef = useRef(null);
     const localStreamRef = useRef(null);
     const chatMessagesRef = useRef(null);
     const typingTimeoutRef = useRef(null);
@@ -121,9 +151,8 @@ export default function VideoCall() {
     const joinCallRef = useRef(null);
     const isHostRef = useRef(false);
     const mediaCheckPromiseRef = useRef(null);
-    const tileRefs = useRef({});                 // FIX: id -> tile DOM node, used for the Fullscreen API
+    const tileRefs = useRef({});
 
-    // ── State ─────────────────────────────────────────────────────────────────
     const [videoAvailable, setVideoAvailable] = useState(true);
     const [audioAvailable, setAudioAvailable] = useState(true);
     const [video, setVideo] = useState(false);
@@ -145,7 +174,6 @@ export default function VideoCall() {
     const [participantStatuses, setParticipantStatuses] = useState({});
     const [permissionsChecked, setPermissionsChecked] = useState(false);
 
-    // Host & Waiting Room State
     const [waitingRoomStatus, setWaitingRoomStatus] = useState("none");
     const [isHost, setIsHost] = useState(false);
     const [waitingUsers, setWaitingUsers] = useState([]);
@@ -154,46 +182,47 @@ export default function VideoCall() {
     const [rejectReason, setRejectReason] = useState("");
     const [showHostDashboard, setShowHostDashboard] = useState(true);
 
-    // FIX: Focus mode + fullscreen state. "focusedId" is either null, "local",
-    // or a remote participant's socket id. It only ever changes the layout via
-    // CSS — the underlying <video> elements stay mounted exactly where they
-    // were, so WebRTC tracks/srcObject assignments are never disturbed.
     const [focusedId, setFocusedId] = useState(null);
     const [fullscreenTileId, setFullscreenTileId] = useState(null);
 
-    // Pre-fill username from auth context
     useEffect(() => {
         if (userData?.fullName) {
             setUsername(userData.fullName);
         }
     }, [userData]);
 
-    // Keep showModalRef / isHostRef in sync
     useEffect(() => { showModalRef.current = showModal; }, [showModal]);
     useEffect(() => { isHostRef.current = isHost; }, [isHost]);
 
-    // Reset connections on mount
     useEffect(() => {
         connections = {};
     }, []);
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // FIX: attachLocalStream — robust helper that waits for the <video> element
-    // to be painted before assigning srcObject. Retries via requestAnimationFrame
-    // up to 20 times (~333ms) before giving up. This eliminates the race between
-    // React's paint cycle and stream assignment that caused the black local tile.
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── FIX 2: attachLocalStream — increased retries to 60, added null check ──
     const attachLocalStream = useCallback((stream, attempt = 0) => {
-        if (!stream) return;
-        const el = localVideoRef.current;
-        if (el) {
-            el.srcObject = stream;
-            // Force play in case autoPlay didn't fire
-            el.play().catch(() => { });
+        if (!stream) {
+            console.warn("attachLocalStream: stream is null");
             return;
         }
-        if (attempt < 20) {
+
+        const videoTracks = stream.getVideoTracks();
+        const audioTracks = stream.getAudioTracks();
+        console.log(`attachLocalStream attempt ${attempt} — video:${videoTracks.length} audio:${audioTracks.length}`);
+
+        const el = localVideoRef.current;
+        if (el) {
+            if (el.srcObject) el.srcObject = null;
+            el.srcObject = stream;
+            el.muted = true;
+            el.play().catch((err) => console.warn("Local video play failed:", err));
+            console.log("Local stream attached ✅");
+            return;
+        }
+
+        if (attempt < 60) {
             requestAnimationFrame(() => attachLocalStream(stream, attempt + 1));
+        } else {
+            console.error("attachLocalStream: video element never appeared after 60 attempts");
         }
     }, []);
 
@@ -214,8 +243,6 @@ export default function VideoCall() {
                 setVideoAvailable(true);
                 setAudioAvailable(true);
                 localStreamRef.current = stream;
-
-                // FIX: show lobby camera preview as soon as we have a stream
                 if (lobbyVideoRef.current) {
                     lobbyVideoRef.current.srcObject = stream;
                 }
@@ -257,42 +284,32 @@ export default function VideoCall() {
         mediaCheckPromiseRef.current = checkMedia();
     }, []);
 
-    // ── Attach lobby preview when ref mounts after state sets videoAvailable ──
     useEffect(() => {
         if (askForUsername && lobbyVideoRef.current && localStreamRef.current) {
             lobbyVideoRef.current.srcObject = localStreamRef.current;
         }
     }, [askForUsername, videoAvailable]);
 
-    // ── Auto-scroll chat ──────────────────────────────────────────────────────
     useEffect(() => {
         if (chatMessagesRef.current) {
             chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
         }
     }, [messages]);
 
-    // ── Persist chat messages ─────────────────────────────────────────────────
     useEffect(() => {
         if (messages.length === 0) return;
         const roomPath = window.location.pathname;
         try {
             sessionStorage.setItem(`meeting_messages_${roomPath}`, JSON.stringify(messages));
-        } catch { /* quota exceeded */ }
+        } catch { }
     }, [messages]);
 
-    // ── FIX: Attach local stream to call room video when room becomes visible ──
-    // This effect alone is NOT sufficient (ref may not be mounted yet), but it
-    // acts as a safety net alongside the attachLocalStream retry helper.
     useEffect(() => {
         if (!askForUsername && waitingRoomStatus === "none") {
             attachLocalStream(localStreamRef.current);
         }
     }, [askForUsername, waitingRoomStatus, attachLocalStream]);
 
-    // ── FIX: Focus mode — track the Fullscreen API state and react to it ──────
-    // Esc to exit is native browser behavior and needs no handling here; this
-    // effect just keeps our UI (icons, classes) in sync with the real state,
-    // and clears focus on a participant who has just left the call.
     useEffect(() => {
         const handleFullscreenChange = () => {
             const el = getFullscreenElement();
@@ -314,7 +331,6 @@ export default function VideoCall() {
         }
     }, [videos, focusedId]);
 
-    // ── Cleanup on unmount ────────────────────────────────────────────────────
     useEffect(() => {
         return () => {
             if (getFullscreenElement()) {
@@ -327,11 +343,7 @@ export default function VideoCall() {
         };
     }, []);
 
-    // =========================================================================
-    // Focus mode + Fullscreen API
-    // =========================================================================
     const handleTileClick = useCallback((id) => {
-        // Focusing only makes sense when there is more than one tile on screen.
         setFocusedId((prev) => (prev === id ? null : id));
     }, []);
 
@@ -409,10 +421,6 @@ export default function VideoCall() {
             }
         };
 
-        // FIX: read localStreamRef.current at call-time, not from a closure.
-        // Previously if the stream wasn't ready when the closure was created,
-        // tracks were never added and the remote peer received no video/audio —
-        // producing a black tile on the remote side.
         const currentStream = localStreamRef.current;
         if (currentStream) {
             currentStream.getTracks().forEach((track) => {
@@ -491,8 +499,6 @@ export default function VideoCall() {
         socketRef.current?.emit("toggle-auto-approve", window.location.pathname, !autoApprove);
     }, [autoApprove]);
 
-
-
     const removeParticipant = useCallback((targetSocketId) => {
         socketRef.current?.emit("remove-participant", window.location.pathname, targetSocketId);
     }, []);
@@ -506,30 +512,27 @@ export default function VideoCall() {
     const connectSocket = useCallback((roomPath, overrideUsername) => {
         const activeUsername = overrideUsername || activeUsernameRef.current;
 
-
-        // ── STEP 1: Yahan options update karo ──
+        // FIX 3: Better socket options with reconnection handling
         socketRef.current = io(server_url, {
             transports: ["websocket", "polling"],
             reconnection: true,
-            reconnectionAttempts: 5,       // ← ADD
-            reconnectionDelay: 2000,       // ← ADD
-            reconnectionDelayMax: 10000,   // ← ADD
-            timeout: 20000,                // ← ADD
+            reconnectionAttempts: 5,
+            reconnectionDelay: 2000,
+            reconnectionDelayMax: 10000,
+            timeout: 20000,
         });
 
-
-        // NAYA (yeh lagao):
         socketRef.current.on("connect_error", (err) => {
             console.error("SOCKET CONNECT ERROR:", err.message);
-            if (err.message === "websocket error" ||
+            if (
+                err.message === "websocket error" ||
                 err.message.includes("INTERNET") ||
-                err.message.includes("timeout")) {
+                err.message.includes("timeout")
+            ) {
                 toast.error("Connection failed. Check your internet.");
             }
         });
 
-
-        // ── STEP 3: Reconnection events — connect ke baad add karo ──
         socketRef.current.on("reconnect_attempt", (attempt) => {
             if (attempt === 1) toast.info("Reconnecting to server...");
         });
@@ -541,7 +544,6 @@ export default function VideoCall() {
         socketRef.current.on("reconnect_failed", () => {
             toast.error("Could not connect. Please refresh the page.");
         });
-
 
         socketRef.current.on("connect", () => {
             console.timeEnd("Socket Connect");
@@ -569,7 +571,11 @@ export default function VideoCall() {
 
         socketRef.current.on("join-rejected", ({ reason }) => {
             setWaitingRoomStatus("rejected");
-            setRejectReason(reason === "meeting-locked" ? "Meeting is locked by the host." : "Your request was declined by the host.");
+            setRejectReason(
+                reason === "meeting-locked"
+                    ? "Meeting is locked by the host."
+                    : "Your request was declined by the host."
+            );
             setAskForUsername(false);
             sessionStorage.removeItem(`joined_meeting_${roomPath}`);
             localStreamRef.current?.getTracks().forEach(t => t.stop());
@@ -585,18 +591,16 @@ export default function VideoCall() {
             setAskForUsername(false);
             if (Array.isArray(participants)) setParticipantCount(participants.length);
 
-            // FIX: attach local stream to the call room <video> element.
-            // We use the retry helper because React hasn't painted the call room
-            // DOM yet at this point — setAskForUsername(false) only schedules
-            // a re-render, it doesn't guarantee the <video> ref is available
-            // synchronously. The helper retries via rAF until the element exists.
             attachLocalStream(localStreamRef.current);
 
             const token = localStorage.getItem("token");
             if (token) {
                 fetch(`${server_url}/api/v1/meetings/history`, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
                     body: JSON.stringify({ meetingCode: roomPath })
                 }).catch(err => console.error("Failed to save meeting history", err));
             }
@@ -607,7 +611,9 @@ export default function VideoCall() {
             if (roomUsernames) setParticipantNames(roomUsernames);
             handleUserJoined(joinedId, allIds);
         });
+
         socketRef.current.on("signal", handleSignal);
+
         socketRef.current.on("user-left", (leftId) => {
             handleUserLeft(leftId);
             setParticipantStatuses(prev => {
@@ -640,7 +646,12 @@ export default function VideoCall() {
             const isOwn = senderSocketId === socketIdRef.current;
             setMessages((prev) => [
                 ...prev,
-                { text: data, sender: isOwn ? activeUsernameRef.current : sender, own: isOwn, timestamp: timestamp || new Date().toISOString() }
+                {
+                    text: data,
+                    sender: isOwn ? activeUsernameRef.current : sender,
+                    own: isOwn,
+                    timestamp: timestamp || new Date().toISOString()
+                }
             ]);
             setNewMessages((n) => (!showModalRef.current && !isOwn ? n + 1 : n));
         });
@@ -750,13 +761,13 @@ export default function VideoCall() {
                             stream = await acquireMediaWithTimeout(optimalConstraints);
                         } catch (err) {
                             if (err.name !== "NotAllowedError") {
-                                try { stream = await acquireMediaWithTimeout({ audio: true }); } catch { /* no media */ }
+                                try { stream = await acquireMediaWithTimeout({ audio: true }); } catch { }
                             }
                         }
                     } else if (videoAvailable) {
-                        try { stream = await acquireMediaWithTimeout({ video: { width: 640, height: 480, frameRate: 15 } }); } catch { /* no video */ }
+                        try { stream = await acquireMediaWithTimeout({ video: { width: 640, height: 480, frameRate: 15 } }); } catch { }
                     } else if (audioAvailable) {
-                        try { stream = await acquireMediaWithTimeout({ audio: true }); } catch { /* no audio */ }
+                        try { stream = await acquireMediaWithTimeout({ audio: true }); } catch { }
                     }
                 } catch (err) {
                     console.warn("Media acquisition failed:", err);
@@ -765,15 +776,14 @@ export default function VideoCall() {
 
             localStreamRef.current = stream || null;
 
-            // FIX: attach to lobby video immediately so it shows before navigation
             if (lobbyVideoRef.current && stream) {
                 lobbyVideoRef.current.srcObject = stream;
             }
 
-            const savedAudio = sessionStorage.getItem("meeting_audio_enabled");
-            const savedVideo = sessionStorage.getItem("meeting_video_enabled");
-            const isAudioOn = savedAudio !== null ? savedAudio === "true" : true;
-            const isVideoOn = savedVideo !== null ? savedVideo === "true" : true;
+            // FIX 4: Always start with video/audio ON — don't read old sessionStorage values
+            // that may have left them disabled from a previous session
+            const isAudioOn = true;
+            const isVideoOn = true;
 
             if (stream) {
                 stream.getAudioTracks().forEach((t) => { t.enabled = isAudioOn; });
@@ -786,8 +796,8 @@ export default function VideoCall() {
 
             sessionStorage.setItem(`joined_meeting_${roomPath}`, "true");
             sessionStorage.setItem("meeting_username", nameToUse);
-            sessionStorage.setItem("meeting_audio_enabled", isAudioOn ? "true" : "false");
-            sessionStorage.setItem("meeting_video_enabled", isVideoOn ? "true" : "false");
+            sessionStorage.setItem("meeting_audio_enabled", "true");
+            sessionStorage.setItem("meeting_video_enabled", "true");
 
             console.time("Socket Connect");
             connectSocket(roomPath, nameToUse);
@@ -797,7 +807,6 @@ export default function VideoCall() {
     }, [videoAvailable, audioAvailable, username, toast, connectSocket]);
     joinCallRef.current = joinCall;
 
-    // ── Auto-rejoin on reload ─────────────────────────────────────────────────
     useEffect(() => {
         if (!permissionsChecked) return;
         if (hasAutoJoinedRef.current) return;
@@ -995,8 +1004,6 @@ export default function VideoCall() {
     const meetingCode = window.location.pathname.substring(1);
     const gridCount = videos.length + 1;
     const isFocusMode = !!focusedId && gridCount > 1;
-    // When focused, exactly one tile becomes "main" and every other tile
-    // becomes a thumbnail — so the thumb count is always (total tiles - 1).
     const thumbRowCount = Math.max(gridCount - 1, 1);
 
     // =========================================================================
@@ -1015,14 +1022,12 @@ export default function VideoCall() {
                         key="lobby"
                     >
                         <div className="lobby-container">
-                            {/* Left — Camera preview */}
                             <motion.div
                                 className="lobby-preview"
                                 initial={{ opacity: 0, x: -24 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: 0.1 }}
                             >
-                                {/* FIX: show live camera preview in lobby using lobbyVideoRef */}
                                 {videoAvailable ? (
                                     <div style={{ position: "relative", width: "100%", height: "100%", borderRadius: "inherit", overflow: "hidden", background: "#0d0f1a" }}>
                                         <video
@@ -1043,7 +1048,6 @@ export default function VideoCall() {
                                     </div>
                                 )}
 
-                                {/* Preview control pills */}
                                 <div className="lobby-preview-controls">
                                     <button
                                         className={`lobby-ctrl ${audioAvailable ? "on" : "off"}`}
@@ -1060,7 +1064,6 @@ export default function VideoCall() {
                                 </div>
                             </motion.div>
 
-                            {/* Right — Join form */}
                             <motion.div
                                 className="lobby-form glass"
                                 initial={{ opacity: 0, x: 24 }}
@@ -1077,7 +1080,6 @@ export default function VideoCall() {
                                     Check your settings and join the meeting.
                                 </p>
 
-                                {/* Meeting code display */}
                                 <div style={{ marginBottom: 20, padding: "10px 14px", background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: "var(--radius-sm)", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                                     <div style={{ minWidth: 0 }}>
                                         <div style={{ fontSize: "0.72rem", color: "var(--text-subtle)", marginBottom: 2 }}>Meeting Code</div>
@@ -1091,7 +1093,6 @@ export default function VideoCall() {
                                     </button>
                                 </div>
 
-                                {/* Name input */}
                                 <label className="lobby-input-label">Your Name</label>
                                 <input
                                     className="lobby-input"
@@ -1258,7 +1259,7 @@ export default function VideoCall() {
                             className={`vc-grid ${isFocusMode ? "vc-focus-mode" : `count-${Math.min(gridCount, 6)}`} ${showModal ? "chat-open" : ""}`}
                             style={isFocusMode ? { gridTemplateRows: `repeat(${thumbRowCount}, minmax(80px, 1fr))` } : undefined}
                         >
-                            {/* Local tile */}
+                            {/* ── FIX 5: Local tile — correct z-index layering ── */}
                             <motion.div
                                 layout
                                 transition={{ type: "spring", damping: 28, stiffness: 280 }}
@@ -1272,15 +1273,34 @@ export default function VideoCall() {
                                     ref={(el) => { tileRefs.current["local"] = el; }}
                                     data-tile-id="local"
                                 >
-                                    <video ref={localVideoRef} autoPlay muted playsInline />
+                                    {/* Video always rendered, hidden by no-video overlay when needed */}
+                                    <video
+                                        ref={localVideoRef}
+                                        autoPlay
+                                        muted
+                                        playsInline
+                                        style={{
+                                            width: "100%",
+                                            height: "100%",
+                                            objectFit: "cover",
+                                            display: "block",
+                                            position: "absolute",
+                                            top: 0,
+                                            left: 0,
+                                            zIndex: 1,
+                                        }}
+                                    />
+                                    {/* FIX: Avatar overlay only when video is OFF — sits above video */}
                                     {!video && (
-                                        <div className="vc-tile-no-video">
+                                        <div className="vc-tile-no-video" style={{ position: "absolute", inset: 0, zIndex: 2, background: "#0D1526" }}>
                                             <div className="vc-tile-avatar">
                                                 {username?.charAt(0)?.toUpperCase() || "Y"}
                                             </div>
                                         </div>
                                     )}
-                                    <div className="vc-tile-name">{username || "You"} (You)</div>
+                                    <div className="vc-tile-name" style={{ position: "relative", zIndex: 3 }}>
+                                        {username || "You"} (You)
+                                    </div>
                                     {focusedId === "local" && (
                                         <button
                                             type="button"
@@ -1288,6 +1308,7 @@ export default function VideoCall() {
                                             onClick={exitFocusMode}
                                             title="Exit focus view"
                                             aria-label="Exit focus view"
+                                            style={{ zIndex: 4 }}
                                         >
                                             <FaTimes size={12} />
                                         </button>
@@ -1299,6 +1320,7 @@ export default function VideoCall() {
                                             onClick={(e) => { e.stopPropagation(); toggleTileFullscreen("local"); }}
                                             title={fullscreenTileId === "local" ? "Exit fullscreen" : "Fullscreen"}
                                             aria-label={fullscreenTileId === "local" ? "Exit fullscreen" : "Enter fullscreen"}
+                                            style={{ zIndex: 4 }}
                                         >
                                             {fullscreenTileId === "local" ? <FaCompress size={13} /> : <FaExpand size={13} />}
                                         </button>
@@ -1431,12 +1453,6 @@ export default function VideoCall() {
                                 {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </span>
                             <span className="code-label">{meetingCode}</span>
-                            {/* Mobile pe link button yahan */}
-                            <button className="ctrl-icon-btn ctrl-on" onClick={copyLink}
-                                style={{ width: 36, height: 36, borderRadius: 10, display: 'none' }}
-                                title="Copy link">
-                                <FaLink />
-                            </button>
                         </div>
 
                         <div className="controls-center">
