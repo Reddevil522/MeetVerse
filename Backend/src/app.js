@@ -39,9 +39,9 @@ app.get("/home", (req, res) => {
     res.send("Server is running");
 });
 
-// Health check endpoint — used for keep-alive pings to prevent Render free-tier cold starts
-app.get("/health", (req, res) => {
-    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+// Sabse simple — koi bhi existing route ke saath add karo
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Catch-all 404 Middleware

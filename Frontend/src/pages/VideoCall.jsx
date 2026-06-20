@@ -505,14 +505,43 @@ export default function VideoCall() {
 
     const connectSocket = useCallback((roomPath, overrideUsername) => {
         const activeUsername = overrideUsername || activeUsernameRef.current;
+
+
+        // ── STEP 1: Yahan options update karo ──
         socketRef.current = io(server_url, {
             transports: ["websocket", "polling"],
             reconnection: true,
+            reconnectionAttempts: 5,       // ← ADD
+            reconnectionDelay: 2000,       // ← ADD
+            reconnectionDelayMax: 10000,   // ← ADD
+            timeout: 20000,                // ← ADD
         });
 
+
+        // NAYA (yeh lagao):
         socketRef.current.on("connect_error", (err) => {
             console.error("SOCKET CONNECT ERROR:", err.message);
+            if (err.message === "websocket error" ||
+                err.message.includes("INTERNET") ||
+                err.message.includes("timeout")) {
+                toast.error("Connection failed. Check your internet.");
+            }
         });
+
+
+        // ── STEP 3: Reconnection events — connect ke baad add karo ──
+        socketRef.current.on("reconnect_attempt", (attempt) => {
+            if (attempt === 1) toast.info("Reconnecting to server...");
+        });
+
+        socketRef.current.on("reconnect", () => {
+            toast.success("Reconnected successfully!");
+        });
+
+        socketRef.current.on("reconnect_failed", () => {
+            toast.error("Could not connect. Please refresh the page.");
+        });
+
 
         socketRef.current.on("connect", () => {
             console.timeEnd("Socket Connect");
