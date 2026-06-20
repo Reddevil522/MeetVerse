@@ -1398,11 +1398,16 @@ export default function VideoCall() {
                     {/* ── BOTTOM CONTROLS BAR ── */}
                     <div className="vc-controls-bar">
                         <div className="controls-left">
-                            <div style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                            <span className="time-label">
                                 {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                            </div>
-                            <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.1)" }} />
-                            <code style={{ fontSize: "0.78rem", color: "var(--text-subtle)" }}>{meetingCode}</code>
+                            </span>
+                            <span className="code-label">{meetingCode}</span>
+                            {/* Mobile pe link button yahan */}
+                            <button className="ctrl-icon-btn ctrl-on" onClick={copyLink}
+                                style={{ width: 36, height: 36, borderRadius: 10, display: 'none' }}
+                                title="Copy link">
+                                <FaLink />
+                            </button>
                         </div>
 
                         <div className="controls-center">
