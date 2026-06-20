@@ -909,7 +909,7 @@
     }
 
     .controls-center {
-        gap: 4px;
+        gap: 14px;
     }
 
     .ctrl-icon-btn {
@@ -940,8 +940,12 @@
     }
 
     .controls-center {
-        gap: 2px;
+        gap: 10px;
+
+
     }
+
+
 }
 
 

@@ -250,22 +250,59 @@ export default function LandingPage() {
                     animate={{ opacity: 1, x: 0, transition: { duration: 0.7, delay: 0.2 } }}
                 >
                     <motion.div animate={{ y: [0, -14, 0] }} transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}>
-                        <div className="hero-video-card glass">
-                            <div className="hero-video-icon"><FaVideo /></div>
-                            <h3>Premium Video Interface</h3>
-                            <div className="hero-controls">
-                                <button className="ctrl-btn active"><FaMicrophone /></button>
-                                <button className="ctrl-btn active"><FaVideo /></button>
-                                <button className="ctrl-btn end"><FaPhoneSlash /></button>
+                        <div className="hero-video-card">
+                            {/* Top bar */}
+                            <div className="hvc-topbar">
+                                <div className="hvc-live-badge">
+                                    <span className="hvc-live-dot" />
+                                    3 participants online
+                                </div>
+                                <div className="hvc-participants">
+                                    <div className="hvc-avatars">
+                                        <div className="hvc-av hvc-av-a">DS</div>
+                                        <div className="hvc-av hvc-av-b">JT</div>
+                                        <div className="hvc-av hvc-av-c">MC</div>
+                                    </div>
+                                    <span className="hvc-part-count">+2 more</span>
+                                </div>
                             </div>
 
-                            {/* Floating badges */}
-                            <div className="mockup-badge online">
-                                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} />
-                                3 participants online
+                            {/* Video grid */}
+                            <div className="hvc-video-grid">
+                                <div className="hvc-tile hvc-tile-main">
+                                    <div className="hvc-tile-avatar hvc-av-main">DS</div>
+                                    <div className="hvc-tile-name">David S. · Host</div>
+                                </div>
+                                <div className="hvc-tile">
+                                    <div className="hvc-tile-avatar hvc-av-blue">JT</div>
+                                    <div className="hvc-mic-off"><FaTimes style={{ fontSize: 7 }} /></div>
+                                    <div className="hvc-tile-name">Jessica T.</div>
+                                </div>
+                                <div className="hvc-tile">
+                                    <div className="hvc-tile-avatar hvc-av-pink">MC</div>
+                                    <div className="hvc-tile-name">Michael C.</div>
+                                </div>
                             </div>
-                            <div className="mockup-badge user-count">
-                                <FaUsers /> HD Quality Active
+
+                            {/* Info row */}
+                            <div className="hvc-info">
+                                <div>
+                                    <div className="hvc-meeting-title">Premium Video Interface</div>
+                                    <div className="hvc-meeting-meta">32:14 · End-to-end encrypted · meetverse.io</div>
+                                </div>
+                                <div className="hvc-hd-badge">
+                                    <span className="hvc-hd-dot" />
+                                    1080p HD
+                                </div>
+                            </div>
+
+                            {/* Controls */}
+                            <div className="hvc-controls">
+                                <button className="hvc-btn"><FaMicrophone /></button>
+                                <button className="hvc-btn"><FaVideo /></button>
+                                <button className="hvc-btn hvc-btn-muted"><FaDesktop /></button>
+                                <button className="hvc-btn hvc-btn-end"><FaPhoneSlash /></button>
+                                <button className="hvc-btn hvc-btn-muted"><FaComments /></button>
                             </div>
                         </div>
                     </motion.div>

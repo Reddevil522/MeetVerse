@@ -335,6 +335,12 @@
     background: linear-gradient(135deg, #a855f7, #ec4899) !important;
 }
 
+
+
+
+
+
+
 /* ─── HERO MOCKUP ─── */
 .lp-hero-mockup {
     position: relative;
@@ -344,64 +350,234 @@
 }
 
 .hero-video-card {
-    width: 500px;
-    padding: 40px;
-    aspect-ratio: 16/9;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
-    border: 1px solid rgba(99, 102, 241, 0.25);
-    border-radius: var(--radius-xl);
+    width: 400px;
+    max-width: 100%;
+    background: rgba(15, 20, 40, 0.85);
+    border: 1px solid rgba(99, 102, 241, 0.22);
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+        0 32px 80px rgba(0, 0, 0, 0.6),
+        0 0 80px rgba(99, 102, 241, 0.12);
     display: flex;
     flex-direction: column;
+}
+
+/* ── Top bar ── */
+.hvc-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.hvc-live-badge {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: 99px;
+    padding: 5px 12px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #34D399;
+    letter-spacing: 0.2px;
+}
+
+.hvc-live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #10B981;
+    animation: pulse-dot 2s infinite;
+}
+
+.hvc-participants {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hvc-avatars {
+    display: flex;
+}
+
+.hvc-av {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid rgba(15, 20, 40, 0.9);
+    margin-left: -8px;
+    font-size: 9px;
+    font-weight: 700;
+    display: flex;
     align-items: center;
     justify-content: center;
-    gap: 16px;
+    color: white;
+}
+
+.hvc-av:first-child {
+    margin-left: 0;
+}
+
+.hvc-av-a {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+}
+
+.hvc-av-b {
+    background: linear-gradient(135deg, #0ea5e9, #6366f1);
+}
+
+.hvc-av-c {
+    background: linear-gradient(135deg, #a855f7, #ec4899);
+}
+
+.hvc-part-count {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.38);
+    font-weight: 500;
+}
+
+/* ── Video grid ── */
+.hvc-video-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 90px 90px;
+    gap: 3px;
+    padding: 3px;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.hvc-tile {
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(139, 92, 246, 0.1));
+    display: flex;
+    align-items: center;
+    justify-content: center;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 0 80px rgba(99, 102, 241, 0.15), 0 24px 60px rgba(0, 0, 0, 0.5);
 }
 
-/* .hero-video-card {
-    height: 300px;
-    width: 500px;
-} */
-
-
-.hero-video-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.1), transparent 60%);
+.hvc-tile-main {
+    grid-row: span 2;
 }
 
-.hero-video-icon {
-    width: 64px;
-    height: 64px;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    border-radius: var(--radius-lg);
+.hvc-tile-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.8rem;
+    font-size: 14px;
+    font-weight: 700;
     color: white;
-    box-shadow: 0 8px 24px rgba(79, 70, 229, 0.5);
 }
 
-.hero-video-card h3 {
-    font-size: 1.1rem;
+.hvc-tile-main .hvc-tile-avatar {
+    width: 56px;
+    height: 56px;
+    font-size: 18px;
+}
+
+.hvc-av-main {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+}
+
+.hvc-av-blue {
+    background: linear-gradient(135deg, #0ea5e9, #6366f1);
+}
+
+.hvc-av-pink {
+    background: linear-gradient(135deg, #a855f7, #ec4899);
+}
+
+.hvc-tile-name {
+    position: absolute;
+    bottom: 7px;
+    left: 8px;
+    font-size: 0.65rem;
     font-weight: 600;
-    color: var(--text-secondary);
-    position: relative;
-    z-index: 1;
+    color: rgba(255, 255, 255, 0.85);
+    background: rgba(0, 0, 0, 0.45);
+    padding: 2px 7px;
+    border-radius: 5px;
 }
 
-.hero-controls {
+.hvc-mic-off {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    width: 18px;
+    height: 18px;
+    background: rgba(239, 68, 68, 0.85);
+    border-radius: 50%;
     display: flex;
-    gap: 12px;
-    position: relative;
-    z-index: 1;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    color: white;
 }
 
-.ctrl-btn {
+/* ── Info row ── */
+.hvc-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.hvc-meeting-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.88);
+    letter-spacing: -0.2px;
+    margin-bottom: 2px;
+}
+
+.hvc-meeting-meta {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.35);
+    font-weight: 500;
+}
+
+.hvc-hd-badge {
+    display: flex;
+    align-items: center;
+    margin-top: 10px;
+    margin-left: 15px;
+    gap: 10px;
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.28);
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #818CF8;
+    letter-spacing: 0.5px;
+}
+
+.hvc-hd-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #818CF8;
+}
+
+/* ── Controls ── */
+.hvc-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 16px 20px;
+}
+
+.hvc-btn {
     width: 44px;
     height: 44px;
     border-radius: 50%;
@@ -409,61 +585,93 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1rem;
     cursor: pointer;
-    transition: var(--transition-base);
+    transition: transform 0.15s, opacity 0.15s;
+    flex-shrink: 0;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.1);
 }
 
-.ctrl-btn.active {
-    background: rgba(255, 255, 255, 0.12);
+.hvc-btn:hover {
+    transform: scale(1.08);
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.hvc-btn:active {
+    transform: scale(0.95);
+}
+
+.hvc-btn-muted {
+    background: rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.hvc-btn-muted:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.hvc-btn-end {
+    width: 52px;
+    height: 52px;
+    background: #EF4444;
     color: white;
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
+    transform: none;
 }
 
-.ctrl-btn.active:hover {
-    background: rgba(255, 255, 255, 0.2);
+.hvc-btn-end:hover {
+    background: #dc2626;
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
 }
 
-.ctrl-btn.end {
-    background: var(--error);
-    color: white;
+.hvc-btn-end svg {
     transform: rotate(135deg);
 }
 
-.ctrl-btn.end:hover {
-    background: #dc2626;
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .hero-video-card {
+        width: 100%;
+    }
+
+    .hvc-video-grid {
+        grid-template-rows: 80px 80px;
+    }
 }
 
-/* Floating badges on mockup */
-.mockup-badge {
-    position: absolute;
-    padding: 8px 14px;
-    border-radius: var(--radius-md);
-    font-size: 0.78rem;
-    font-weight: 600;
-    border: 1px solid;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
+@media (max-width: 480px) {
+    .hvc-video-grid {
+        grid-template-rows: 70px 70px;
+    }
+
+    .hvc-btn {
+        width: 38px;
+        height: 38px;
+        font-size: 0.85rem;
+    }
+
+    .hvc-btn-end {
+        width: 46px;
+        height: 46px;
+    }
 }
 
-.mockup-badge.online {
-    top: 5px;
-    right: 5px;
-    margin: 5px;
-    background: rgba(16, 185, 129, 0.12);
-    border-color: rgba(16, 185, 129, 0.3);
-    color: #34D399;
-}
 
-.mockup-badge.user-count {
-    bottom: 5px;
-    left: 5px;
-    background: rgba(99, 102, 241, 0.12);
-    border-color: rgba(99, 102, 241, 0.3);
-    color: #818CF8;
-    margin: 5px;
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* ─── SECTION BASE ─── */
 .lp-section {
@@ -1121,5 +1329,112 @@
     .btn-outline-lg {
         padding: 12px 24px;
         font-size: 0.925rem;
+    }
+}
+
+
+
+
+
+
+
+
+
+.hero-video-card {
+    width: 100%;
+    max-width: 460px;
+    box-sizing: border-box;
+    padding: 24px;
+}
+
+/* stats grid — already 2-col at 768px, guard 480px too */
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* lp-section padding on small screens */
+@media (max-width: 480px) {
+    .lp-section {
+        padding: 56px 4%;
+    }
+
+    .lp-stats-section {
+        padding: 48px 4%;
+    }
+
+    .lp-cta {
+        padding: 48px 4% 64px;
+    }
+
+    .lp-footer {
+        padding: 48px 4% 24px;
+    }
+}
+
+/* how-stat-card numbers on mobile */
+@media (max-width: 480px) {
+    .how-stat-card {
+        padding: 32px 20px;
+    }
+
+    .how-stat-card .big-num {
+        font-size: 2.6rem;
+        letter-spacing: -2px;
+    }
+
+    .how-stat-card .big-label {
+        font-size: 0.9rem;
+    }
+}
+
+/* features grid — force 1-col below 480px */
+@media (max-width: 480px) {
+    .lp-features-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* cta card padding */
+@media (max-width: 380px) {
+    .cta-card {
+        padding: 40px 16px;
+    }
+
+    .cta-card h2 {
+        font-size: 1.6rem;
+        letter-spacing: -1px;
+    }
+
+    .cta-buttons {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .cta-buttons a,
+    .cta-buttons button {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* hero buttons — stack on very small screens */
+@media (max-width: 380px) {
+    .lp-hero-buttons {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .lp-hero-buttons button {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* footer grid already handled — safe fallback */
+@media (max-width: 380px) {
+    .footer-grid {
+        grid-template-columns: 1fr;
     }
 }
