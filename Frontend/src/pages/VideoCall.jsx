@@ -111,7 +111,7 @@ function RemoteVideo({ item, index, participantNames, status, tileRef, onFullscr
                     </div>
                 </div>
             )}
-            <div className="vc-tile-name" style={{ display: "flex", alignItems: "center", zIndex: 3, position: "relative" }}>
+            <div className="vc-tile-name" style={{ display: "flex", alignItems: "center", zIndex: 3 }}>
                 {displayName}
                 {isMuted && (
                     <span style={{ marginLeft: "6px", color: "#ef4444", display: "flex" }}>
@@ -1298,7 +1298,7 @@ export default function VideoCall() {
                                             </div>
                                         </div>
                                     )}
-                                    <div className="vc-tile-name" style={{ position: "relative", zIndex: 3 }}>
+                                    <div className="vc-tile-name" style={{ zIndex: 3 }}>
                                         {username || "You"} (You)
                                     </div>
                                     {focusedId === "local" && (
