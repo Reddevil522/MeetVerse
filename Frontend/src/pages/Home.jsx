@@ -69,10 +69,10 @@ export default function Home() {
 
                 if (data.success) {
                     setMeetingHistory(data.meetings);
-                    
+
                     // Calculate real stats from user data
                     const totalMeetings = data.meetings.length;
-                    
+
                     // Sum real duration (assuming duration is in minutes), fallback to 0 if none
                     const totalMinutes = data.meetings.reduce((acc, m) => acc + (m.duration || 0), 0);
                     const hours = Math.round(totalMinutes / 60);

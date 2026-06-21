@@ -132,40 +132,46 @@
 
 /* ─── BUTTONS ─── */
 .btn-ghost {
-    background: transparent;
+    background: var(--bg-card);
     border: 1px solid var(--border-strong);
-    padding: 9px 22px;
-    border-radius: var(--radius-sm);
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    font-weight: 500;
+    padding: 10px 24px;
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: var(--transition-base);
-    height: 40px;
+    transition: all 0.25s ease;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    box-shadow: var(--shadow-sm);
 }
 
 .btn-ghost:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.25);
-    color: var(--text-primary);
+    background: var(--bg-surface);
+    border-color: var(--border-focus);
+    color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
 }
 
 .btn-gradient {
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    background: linear-gradient(135deg, var(--primary-light), var(--secondary));
     border: none;
-    padding: 9px 22px;
-    border-radius: var(--radius-sm);
+    padding: 10px 24px;
+    border-radius: 10px;
     color: #fff;
-    font-size: 0.875rem;
+    font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
-    transition: var(--transition-base);
+    transition: all 0.25s ease;
     position: relative;
     overflow: hidden;
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+    height: 42px;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
 }
 
 .btn-gradient::before {
