@@ -8,6 +8,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { AuthContext } from "../contexts/AuthContext";
 import { useToast } from "../hooks/useToast";
+import ThemeToggle from "../components/ThemeToggle";
 import {
     FaVideo, FaKeyboard, FaCalendarAlt, FaBell, FaSignOutAlt,
     FaHistory, FaClock, FaUsers, FaChevronLeft, FaChevronRight,
@@ -22,7 +23,6 @@ const sidebarNav = [
     { icon: <FaVideo />, label: "Meetings", key: "meetings" },
     { icon: <FaHistory />, label: "History", key: "history" },
     { icon: <FaUsers />, label: "Contacts", key: "contacts" },
-    { icon: <FaBell />, label: "Alerts", key: "alerts" },
     { icon: <FaCog />, label: "Settings", key: "settings" },
 ];
 
@@ -69,10 +69,26 @@ export default function Home() {
 
                 if (data.success) {
                     setMeetingHistory(data.meetings);
+                    
+                    // Calculate real stats from user data
+                    const totalMeetings = data.meetings.length;
+                    
+                    // Sum real duration (assuming duration is in minutes), fallback to 0 if none
+                    const totalMinutes = data.meetings.reduce((acc, m) => acc + (m.duration || 0), 0);
+                    const hours = Math.round(totalMinutes / 60);
+
+                    // Count unique participants across all meetings
+                    const uniqueParticipants = new Set();
+                    data.meetings.forEach(m => {
+                        if (m.participants) {
+                            m.participants.forEach(p => uniqueParticipants.add(p._id?.toString() || p.toString()));
+                        }
+                    });
+
                     setStats({
-                        total: data.meetings.length,
-                        hours: Math.round(data.meetings.length * 0.5),
-                        participants: data.meetings.reduce((acc, m) => acc + (m.participants?.length || 1), 0),
+                        total: totalMeetings,
+                        hours: hours,
+                        participants: uniqueParticipants.size,
                     });
                 }
             } catch (error) {
@@ -182,16 +198,23 @@ export default function Home() {
                             <span className="s-label">{item.label}</span>
                         </button>
                     ))}
+                    {/* Mobile-only Logout Item */}
+                    <button
+                        className="sidebar-item mobile-only-logout"
+                        onClick={handleUserLogout}
+                        title="Logout"
+                    >
+                        <span className="s-icon"><FaSignOutAlt style={{ color: "var(--error)" }} /></span>
+                        <span className="s-label" style={{ color: "var(--error)" }}>Logout</span>
+                    </button>
                 </nav>
 
                 {/* User footer */}
                 <div className="sidebar-footer">
-                    <div className="sidebar-user" onClick={handleUserLogout} title="Logout">
-                        <div className="sidebar-avatar">{avatarLetter}</div>
-                        <div className="sidebar-user-info">
-                            <div className="sidebar-username">{displayName}</div>
-                            <div className="sidebar-useremail">Click to logout</div>
-                        </div>
+                    <div className="topbar-user" onClick={handleUserLogout} title="Logout" style={{ width: "100%" }}>
+                        <div className="topbar-avatar">{avatarLetter}</div>
+                        <span className="topbar-uname" style={{ flex: 1 }}>{displayName}</span>
+                        <FaSignOutAlt style={{ fontSize: "1rem", color: "var(--text-subtle)", marginLeft: "auto", flexShrink: 0 }} />
                     </div>
                 </div>
             </aside>
@@ -210,11 +233,8 @@ export default function Home() {
                             {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
                         <button className="icon-btn" aria-label="Notifications"><FaBell /></button>
-                        <div className="topbar-user" onClick={handleUserLogout} title="Logout">
-                            <div className="topbar-avatar">{avatarLetter}</div>
-                            <span className="topbar-uname">{displayName}</span>
-                            <FaSignOutAlt style={{ fontSize: "0.75rem", color: "var(--text-subtle)" }} />
-                        </div>
+
+                        <ThemeToggle />
                     </div>
                 </header>
 

@@ -12,6 +12,8 @@ import {
     FaExpand, FaCompress,
 } from "react-icons/fa";
 import { io } from "socket.io-client";
+import ThemeToggle from "../components/ThemeToggle";
+import CameraOffPlaceholder from "../components/CameraOffPlaceholder";
 import "../public/CSS/VideoCall.css";
 import "../public/CSS/WaitingRoom.css";
 import server_url from "../environment.js";
@@ -60,7 +62,7 @@ const getFullscreenElement = () =>
     document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement || null;
 
 // ── FIX 1: RemoteVideo — stable ref + immediate attach on mount ──────────────
-function RemoteVideo({ item, index, participantNames, status, tileRef, onFullscreen, isFullscreenActive }) {
+function RemoteVideo({ item, index, participantNames, status, tileRef, onFullscreen, isFullscreenActive, isHostTile }) {
     const ref = useRef(null);
 
     // FIX: attach stream when it changes
@@ -84,11 +86,13 @@ function RemoteVideo({ item, index, participantNames, status, tileRef, onFullscr
     }, [item.stream]);
 
     const displayName = participantNames[item.id] || `Participant ${index + 1}`;
+    const hasVideoTrack = item.stream && item.stream.getVideoTracks().length > 0;
     const isMuted = status?.isMuted;
-    const isVideoOff = status?.isVideoOff;
+    const isVideoOff = status?.isVideoOff || !hasVideoTrack;
 
     return (
         <div className="vc-tile" ref={tileRef} data-tile-id={item.id}>
+            {isHostTile && <div className="vc-tile-host-badge">HOST</div>}
             <video
                 ref={setRef}
                 autoPlay
@@ -104,13 +108,7 @@ function RemoteVideo({ item, index, participantNames, status, tileRef, onFullscr
                     zIndex: 1,
                 }}
             />
-            {isVideoOff && (
-                <div className="vc-tile-no-video">
-                    <div className="vc-tile-avatar">
-                        {displayName.charAt(0).toUpperCase()}
-                    </div>
-                </div>
-            )}
+            {isVideoOff && <CameraOffPlaceholder participantName={displayName} />}
             <div className="vc-tile-name" style={{ display: "flex", alignItems: "center", zIndex: 3 }}>
                 {displayName}
                 {isMuted && (
@@ -176,6 +174,7 @@ export default function VideoCall() {
 
     const [waitingRoomStatus, setWaitingRoomStatus] = useState("none");
     const [isHost, setIsHost] = useState(false);
+    const [hostSocketId, setHostSocketId] = useState(null);
     const [waitingUsers, setWaitingUsers] = useState([]);
     const [meetingLocked, setMeetingLocked] = useState(false);
     const [autoApprove, setAutoApprove] = useState(false);
@@ -198,7 +197,6 @@ export default function VideoCall() {
         connections = {};
     }, []);
 
-    // ── FIX 2: attachLocalStream — increased retries to 60, added null check ──
     const attachLocalStream = useCallback((stream, attempt = 0) => {
         if (!stream) {
             console.warn("attachLocalStream: stream is null");
@@ -226,7 +224,6 @@ export default function VideoCall() {
         }
     }, []);
 
-    // ── Permissions check on mount ────────────────────────────────────────────
     useEffect(() => {
         if (navigator.mediaDevices?.getDisplayMedia) {
             setScreenAvailable(true);
@@ -376,9 +373,6 @@ export default function VideoCall() {
         toggleTileFullscreen(id);
     }, [toggleTileFullscreen]);
 
-    // =========================================================================
-    // WebRTC helpers
-    // =========================================================================
     const getOrCreatePeerConnection = useCallback((id) => {
         if (connections[id]) return connections[id];
 
@@ -449,6 +443,11 @@ export default function VideoCall() {
     }, [getOrCreatePeerConnection]);
 
     const handleSignal = useCallback(async (fromId, signal) => {
+        if (signal.type === "is-host") {
+            setHostSocketId(fromId);
+            return;
+        }
+
         const pc = getOrCreatePeerConnection(fromId);
         if (signal.type === "offer") {
             await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
@@ -474,11 +473,9 @@ export default function VideoCall() {
         setVideos((prev) => prev.filter((v) => v.id !== leftId));
         setParticipantCount((n) => Math.max(0, n - 1));
         delete tileRefs.current[leftId];
-    }, []);
+        if (hostSocketId === leftId) setHostSocketId(null);
+    }, [hostSocketId]);
 
-    // =========================================================================
-    // Host Actions
-    // =========================================================================
     const approveUser = useCallback((targetSocketId) => {
         socketRef.current?.emit("approve-user", window.location.pathname, targetSocketId);
     }, []);
@@ -503,16 +500,12 @@ export default function VideoCall() {
         socketRef.current?.emit("remove-participant", window.location.pathname, targetSocketId);
     }, []);
 
-    // =========================================================================
-    // Socket connection
-    // =========================================================================
     const activeUsernameRef = useRef("");
     useEffect(() => { activeUsernameRef.current = username; }, [username]);
 
     const connectSocket = useCallback((roomPath, overrideUsername) => {
         const activeUsername = overrideUsername || activeUsernameRef.current;
 
-        // FIX 3: Better socket options with reconnection handling
         socketRef.current = io(server_url, {
             transports: ["websocket", "polling"],
             reconnection: true,
@@ -546,8 +539,6 @@ export default function VideoCall() {
         });
 
         socketRef.current.on("connect", () => {
-            console.timeEnd("Socket Connect");
-            console.time("Room Join");
             socketIdRef.current = socketRef.current.id;
 
             let sessionId = sessionStorage.getItem("meetverse_session_id");
@@ -583,10 +574,19 @@ export default function VideoCall() {
         });
 
         socketRef.current.on("join-approved", ({ isHost: approvedAsHost, participants }) => {
-            console.timeEnd("Room Join");
-            console.timeEnd("Join Flow");
             setIsHost(approvedAsHost);
             isHostRef.current = approvedAsHost;
+            if (approvedAsHost) {
+                setHostSocketId(socketIdRef.current);
+                if (Array.isArray(participants)) {
+                    participants.forEach(p => {
+                        if (p.socketId !== socketIdRef.current) {
+                            socketRef.current.emit("signal", p.socketId, { type: "is-host" });
+                        }
+                    });
+                }
+            }
+            
             setWaitingRoomStatus("none");
             setAskForUsername(false);
             if (Array.isArray(participants)) setParticipantCount(participants.length);
@@ -610,6 +610,16 @@ export default function VideoCall() {
         socketRef.current.on("user-joined", (joinedId, allIds, roomUsernames) => {
             if (roomUsernames) setParticipantNames(roomUsernames);
             handleUserJoined(joinedId, allIds);
+
+            if (isHostRef.current && socketRef.current) {
+                socketRef.current.emit("signal", joinedId, { type: "is-host" });
+            }
+
+            const localAudioOff = sessionStorage.getItem("meeting_audio_enabled") === "false";
+            const localVideoOff = sessionStorage.getItem("meeting_video_enabled") === "false";
+            
+            if (localAudioOff && socketRef.current) socketRef.current.emit("mute-user");
+            if (localVideoOff && socketRef.current) socketRef.current.emit("video-off");
         });
 
         socketRef.current.on("signal", handleSignal);
@@ -702,6 +712,7 @@ export default function VideoCall() {
         });
 
         socketRef.current.on("host-transferred", (newHostSocketId) => {
+            setHostSocketId(newHostSocketId);
             if (newHostSocketId === socketIdRef.current) {
                 setIsHost(true);
                 isHostRef.current = true;
@@ -722,12 +733,8 @@ export default function VideoCall() {
         });
     }, [handleUserJoined, handleSignal, handleUserLeft, userData, toast, attachLocalStream]);
 
-    // =========================================================================
-    // Join flow
-    // =========================================================================
     const joinCall = useCallback(async (overrideUsername) => {
         try {
-            console.time("Join Flow");
             const roomPath = window.location.pathname;
 
             const savedMessages = sessionStorage.getItem(`meeting_messages_${roomPath}`);
@@ -780,8 +787,6 @@ export default function VideoCall() {
                 lobbyVideoRef.current.srcObject = stream;
             }
 
-            // FIX 4: Always start with video/audio ON — don't read old sessionStorage values
-            // that may have left them disabled from a previous session
             const isAudioOn = true;
             const isVideoOn = true;
 
@@ -799,7 +804,6 @@ export default function VideoCall() {
             sessionStorage.setItem("meeting_audio_enabled", "true");
             sessionStorage.setItem("meeting_video_enabled", "true");
 
-            console.time("Socket Connect");
             connectSocket(roomPath, nameToUse);
         } catch (err) {
             console.error("joinCall CRASHED:", err.message, err.stack);
@@ -822,9 +826,6 @@ export default function VideoCall() {
         }
     }, [permissionsChecked]);
 
-    // =========================================================================
-    // Controls
-    // =========================================================================
     const replaceTracksForAllPeers = (newStream) => {
         Object.values(connections).forEach((pc) => {
             newStream.getTracks().forEach((newTrack) => {
@@ -1006,12 +1007,8 @@ export default function VideoCall() {
     const isFocusMode = !!focusedId && gridCount > 1;
     const thumbRowCount = Math.max(gridCount - 1, 1);
 
-    // =========================================================================
-    // Render
-    // =========================================================================
     return (
         <>
-            {/* ════════════ LOBBY SCREEN ════════════ */}
             <AnimatePresence mode="wait">
                 {askForUsername && waitingRoomStatus === "none" && (
                     <motion.div
@@ -1123,7 +1120,6 @@ export default function VideoCall() {
                 )}
             </AnimatePresence>
 
-            {/* ════════════ WAITING ROOM SCREEN ════════════ */}
             {waitingRoomStatus === "waiting" && (
                 <div className="vc-waiting-room glass">
                     <div className="waiting-spinner"></div>
@@ -1134,7 +1130,6 @@ export default function VideoCall() {
                 </div>
             )}
 
-            {/* ════════════ REJECTED SCREEN ════════════ */}
             {waitingRoomStatus === "rejected" && (
                 <div className="vc-waiting-room glass">
                     <h2 style={{ color: "#f87171" }}>Request Declined</h2>
@@ -1143,7 +1138,6 @@ export default function VideoCall() {
                 </div>
             )}
 
-            {/* ════════════ CALL ROOM ════════════ */}
             {!askForUsername && waitingRoomStatus === "none" && (
                 <motion.div
                     className="vc-room"
@@ -1151,7 +1145,6 @@ export default function VideoCall() {
                     animate={{ opacity: 1 }}
                     key="room"
                 >
-                    {/* ── TOP BAR ── */}
                     <div className="vc-topbar">
                         <div className="vc-topbar-left">
                             <span className="vc-meeting-title">MeetVerse</span>
@@ -1169,10 +1162,10 @@ export default function VideoCall() {
                             >
                                 <FaLink />
                             </button>
+                            <ThemeToggle />
                         </div>
                     </div>
 
-                    {/* ── HOST CONTROLS ── */}
                     {isHost && (
                         <div className="host-dashboard">
                             <div className="host-dashboard-header" style={{ cursor: "pointer" }} onClick={() => setShowHostDashboard(!showHostDashboard)}>
@@ -1210,28 +1203,24 @@ export default function VideoCall() {
                                     </div>
 
                                     <div>
-                                        <div className="host-section-title">Participants ({videos.length + (videos.length > 0 ? 1 : 0)})</div>
-                                        {videos.length > 0 ? (
-                                            <div style={{ maxHeight: "150px", overflowY: "auto" }}>
-                                                <div className="participant-item">
-                                                    <div className="participant-item-name">
-                                                        <FaUsers size={12} color="var(--text-subtle)" /> {username} (You)
-                                                    </div>
+                                        <div className="host-section-title">Participants ({videos.length + 1})</div>
+                                        <div style={{ maxHeight: "150px", overflowY: "auto" }}>
+                                            <div className="participant-item">
+                                                <div className="participant-item-name">
+                                                    <FaUsers size={12} color="var(--text-subtle)" /> {username} (You)
                                                 </div>
-                                                {videos.map(v => (
-                                                    <div key={v.id} className="participant-item">
-                                                        <div className="participant-item-name">
-                                                            <FaUsers size={12} color="var(--text-subtle)" /> {participantNames[v.id] || "Participant"}
-                                                        </div>
-                                                        <button className="remove-participant-btn" onClick={() => removeParticipant(v.id)} title="Remove Participant">
-                                                            <FaTimes />
-                                                        </button>
-                                                    </div>
-                                                ))}
                                             </div>
-                                        ) : (
-                                            <div style={{ color: "var(--text-subtle)", fontSize: "0.85rem", fontStyle: "italic", textAlign: "center", padding: "10px 0" }}>You are the only one here.</div>
-                                        )}
+                                            {videos.map(v => (
+                                                <div key={v.id} className="participant-item">
+                                                    <div className="participant-item-name">
+                                                        <FaUsers size={12} color="var(--text-subtle)" /> {participantNames[v.id] || "Participant"}
+                                                    </div>
+                                                    <button className="remove-participant-btn" onClick={() => removeParticipant(v.id)} title="Remove Participant">
+                                                        <FaTimes />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
 
                                     <div>
@@ -1253,13 +1242,11 @@ export default function VideoCall() {
                         </div>
                     )}
 
-                    {/* ── VIDEO AREA + CHAT ── */}
                     <div className="vc-video-area">
                         <div
                             className={`vc-grid ${isFocusMode ? "vc-focus-mode" : `count-${Math.min(gridCount, 6)}`} ${showModal ? "chat-open" : ""}`}
                             style={isFocusMode ? { gridTemplateRows: `repeat(${thumbRowCount}, minmax(80px, 1fr))` } : undefined}
                         >
-                            {/* ── FIX 5: Local tile — correct z-index layering ── */}
                             <motion.div
                                 layout
                                 transition={{ type: "spring", damping: 28, stiffness: 280 }}
@@ -1273,7 +1260,7 @@ export default function VideoCall() {
                                     ref={(el) => { tileRefs.current["local"] = el; }}
                                     data-tile-id="local"
                                 >
-                                    {/* Video always rendered, hidden by no-video overlay when needed */}
+                                    {isHost && <div className="vc-tile-host-badge">HOST</div>}
                                     <video
                                         ref={localVideoRef}
                                         autoPlay
@@ -1283,21 +1270,14 @@ export default function VideoCall() {
                                             width: "100%",
                                             height: "100%",
                                             objectFit: "cover",
-                                            display: "block",
+                                            display: video ? "block" : "none",
                                             position: "absolute",
                                             top: 0,
                                             left: 0,
                                             zIndex: 1,
                                         }}
                                     />
-                                    {/* FIX: Avatar overlay only when video is OFF — sits above video */}
-                                    {!video && (
-                                        <div className="vc-tile-no-video" style={{ position: "absolute", inset: 0, zIndex: 2, background: "#0D1526" }}>
-                                            <div className="vc-tile-avatar">
-                                                {username?.charAt(0)?.toUpperCase() || "Y"}
-                                            </div>
-                                        </div>
-                                    )}
+                                    {!video && <CameraOffPlaceholder participantName={username || "You"} />}
                                     <div className="vc-tile-name" style={{ zIndex: 3 }}>
                                         {username || "You"} (You)
                                     </div>
@@ -1328,7 +1308,6 @@ export default function VideoCall() {
                                 </div>
                             </motion.div>
 
-                            {/* Remote tiles */}
                             {videos.map((item, index) => (
                                 <motion.div
                                     key={item.id}
@@ -1347,6 +1326,7 @@ export default function VideoCall() {
                                         tileRef={(el) => { tileRefs.current[item.id] = el; }}
                                         onFullscreen={() => toggleTileFullscreen(item.id)}
                                         isFullscreenActive={fullscreenTileId === item.id}
+                                        isHostTile={hostSocketId === item.id}
                                     />
                                     {focusedId === item.id && (
                                         <button
@@ -1363,7 +1343,6 @@ export default function VideoCall() {
                             ))}
                         </div>
 
-                        {/* ── CHAT PANEL ── */}
                         <AnimatePresence>
                             {showModal && (
                                 <motion.div

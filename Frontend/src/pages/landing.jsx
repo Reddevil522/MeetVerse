@@ -9,6 +9,7 @@ import "../public/CSS/LandingPage.css";
 import { motion } from "framer-motion";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useToast } from "../hooks/useToast";
+import ThemeToggle from "../components/ThemeToggle";
 import {
     FaBars, FaTimes, FaVideo, FaMicrophone, FaDesktop,
     FaComments, FaRecordVinyl, FaLock, FaUsers, FaHistory,
@@ -179,6 +180,7 @@ export default function LandingPage() {
                 <div className="lp-nav-actions">
                     <Link to="/login"><button className="btn-ghost">Login</button></Link>
                     <Link to="/register"><button className="btn-gradient">Sign Up Free</button></Link>
+                    <ThemeToggle />
                 </div>
 
                 {/* Mobile hamburger */}
@@ -194,9 +196,10 @@ export default function LandingPage() {
                 <a href="#how-it-works" onClick={() => setMenuOpen(false)}>How It Works</a>
                 <a href="#testimonials" onClick={() => setMenuOpen(false)}>Testimonials</a>
                 <div className="mobile-nav-divider" />
-                <div className="mobile-nav-actions">
+                <div className="mobile-nav-actions" style={{ alignItems: "center" }}>
                     <Link to="/login" style={{ flex: 1 }}><button className="btn-ghost" style={{ width: "100%" }}>Login</button></Link>
                     <Link to="/register" style={{ flex: 1 }}><button className="btn-gradient" style={{ width: "100%", justifyContent: "center" }}>Sign Up</button></Link>
+                    <ThemeToggle />
                 </div>
             </div>
 

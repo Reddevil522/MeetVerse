@@ -141,33 +141,84 @@
     overflow: hidden;
 }
 
+.mobile-only-logout {
+    display: none;
+}
+
 .sidebar.collapsed .sidebar-section-label {
     opacity: 0;
 }
 
 .sidebar-footer {
-    padding: 12px 8px;
+    padding: 6px 8px;
     border-top: 1px solid var(--border);
+}
+
+/* When sidebar is collapsed, hide the name & icon inside the footer pill */
+.sidebar.collapsed .sidebar-footer .topbar-uname,
+.sidebar.collapsed .sidebar-footer svg {
+    display: none;
+}
+
+.sidebar.collapsed .sidebar-footer .topbar-user {
+    justify-content: center;
+    padding: 5px;
+    gap: 0;
+}
+
+/* ── Sidebar footer logout hover ── */
+.sidebar-footer .topbar-user {
+    transition: background 0.22s ease, border-color 0.22s ease,
+                box-shadow 0.22s ease, transform 0.18s ease;
+    border: 1px solid transparent;
+}
+
+.sidebar-footer .topbar-user:hover {
+    background: rgba(239, 68, 68, 0.08) !important;
+    border-color: rgba(239, 68, 68, 0.22) !important;
+    box-shadow: 0 2px 12px rgba(239, 68, 68, 0.10);
+    transform: translateY(-1px);
+}
+
+.sidebar-footer .topbar-user:hover .topbar-uname {
+    color: #EF4444;
+}
+
+.sidebar-footer .topbar-user:hover svg {
+    color: #EF4444 !important;
+}
+
+.sidebar-footer .topbar-user:active {
+    transform: scale(0.97);
 }
 
 .sidebar-user {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px;
-    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     transition: var(--transition-base);
     overflow: hidden;
+    position: relative;
+    border: 1px solid transparent;
 }
 
 .sidebar-user:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--border);
+}
+
+/* ── Avatar + status dot ── */
+.sidebar-avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
 }
 
 .sidebar-avatar {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--primary), var(--secondary));
     display: flex;
@@ -176,11 +227,25 @@
     font-size: 0.875rem;
     font-weight: 700;
     color: white;
-    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
 }
 
+.sidebar-status-dot {
+    position: absolute;
+    bottom: 1px;
+    right: 1px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #10B981;
+    border: 2px solid var(--bg-surface);
+}
+
+/* ── Text block ── */
 .sidebar-user-info {
     overflow: hidden;
+    flex: 1;
+    min-width: 0;
     opacity: 1;
     transition: opacity 0.2s;
 }
@@ -188,23 +253,45 @@
 .sidebar.collapsed .sidebar-user-info {
     opacity: 0;
     pointer-events: none;
+    width: 0;
 }
 
 .sidebar-username {
     font-size: 0.825rem;
     font-weight: 600;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .sidebar-useremail {
-    font-size: 0.72rem;
+    font-size: 0.70rem;
     color: var(--text-subtle);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    transition: color 200ms ease;
+}
+
+.sidebar-user:hover .sidebar-useremail {
+    color: var(--error);
+}
+
+/* ── Logout icon ── */
+.sidebar-logout-icon {
+    font-size: 0.70rem;
+    color: var(--text-subtle);
+    flex-shrink: 0;
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity 200ms ease, transform 200ms ease, color 200ms ease;
+}
+
+.sidebar-user:hover .sidebar-logout-icon {
+    opacity: 1;
+    transform: translateX(0);
+    color: var(--error);
 }
 
 /* Collapse toggle */
@@ -215,8 +302,8 @@
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
+    background: transparent;
+    border: 1px solid transparent;
     color: var(--text-muted);
     display: flex;
     align-items: center;
@@ -228,7 +315,7 @@
 }
 
 .sidebar-toggle:hover {
-    background: var(--bg-card);
+    background: rgba(255, 255, 255, 0.06);
     color: var(--text-primary);
 }
 
@@ -828,6 +915,10 @@
         gap: 0;
         overflow-x: auto;
         overflow-y: hidden;
+    }
+
+    .mobile-only-logout {
+        display: flex !important;
     }
 
     .sidebar-item {
