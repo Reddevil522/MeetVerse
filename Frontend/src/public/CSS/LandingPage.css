@@ -1246,13 +1246,14 @@
 
     .footer-grid {
         grid-template-columns: 1fr 1fr;
-        gap: 32px;
+        gap: 40px 32px;
     }
 
     .footer-bottom {
         flex-direction: column;
-        gap: 8px;
+        gap: 12px;
         text-align: center;
+        padding-top: 32px;
     }
 
     .cta-card {
@@ -1324,7 +1325,13 @@
     }
 
     .footer-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 40px 24px;
+    }
+
+    .footer-grid .footer-col:first-child {
+        grid-column: 1 / -1; /* Brand column spans full width */
+        margin-bottom: 8px;
     }
 
     .btn-large {
@@ -1441,6 +1448,9 @@
 /* footer grid already handled — safe fallback */
 @media (max-width: 380px) {
     .footer-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr; /* Stack everything on extremely small screens */
+    }
+    .footer-grid .footer-col:first-child {
+        grid-column: 1 / -1;
     }
 }

@@ -512,7 +512,7 @@ export default function LandingPage() {
                 </div>
 
                 <div className="footer-bottom">
-                    <span>© 2026 MeetVerse. All rights reserved.</span>
+                    <span>© 2026 Gopal Kumar. All rights reserved.</span>
                     <span>Built with ❤️ for the future of work</span>
                 </div>
             </footer>
