@@ -31,20 +31,20 @@ app.use(cors());
 app.use(express.json({ limit: "40kb" }));
 app.use(express.urlencoded({ limit: "40kb", extended: true }));
 
-// API Routes
-app.use("/api/v1/users", UserRoutes);
-app.use("/api/v1/meetings", MeetingRoutes);
-
-app.get("/home", (req, res) => {
-    res.send("Server is running");
-});
-
 // Sabse simple — koi bhi existing route ke saath add karo
 app.get("/health", (req, res) => {
     res.status(200).json({
         status: "ok",
         app: "MeetVerse"
     });
+});
+
+// API Routes
+app.use("/api/v1/users", UserRoutes);
+app.use("/api/v1/meetings", MeetingRoutes);
+
+app.get("/home", (req, res) => {
+    res.send("Server is running");
 });
 
 // Catch-all 404 Middleware
