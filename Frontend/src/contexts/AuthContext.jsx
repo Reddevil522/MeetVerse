@@ -1,5 +1,6 @@
 import axios from "axios";
 import { createContext, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import httpStatus from "http-status";
 import server_url from "../environment.js";
 
@@ -13,6 +14,7 @@ const client = axios.create({
 export const AuthProvider = ({ children }) => {
     const [userData, setUserData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -63,6 +65,7 @@ export const AuthProvider = ({ children }) => {
     const handleLogout = () => {
         localStorage.removeItem("token");
         setUserData(null);
+        navigate("/");
     };
 
     const data = {
