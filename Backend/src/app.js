@@ -40,8 +40,11 @@ app.get("/home", (req, res) => {
 });
 
 // Sabse simple — koi bhi existing route ke saath add karo
-app.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get("/health", (req, res) => {
+    res.status(200).json({
+        status: "ok",
+        app: "MeetVerse"
+    });
 });
 
 // Catch-all 404 Middleware
