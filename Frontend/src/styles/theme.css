@@ -387,6 +387,28 @@ a {
     border-color: var(--border) !important;
     background: var(--bg-surface) !important;
 }
+[data-theme="light"] .lp-footer::before {
+    background: linear-gradient(90deg, transparent 0%, rgba(37, 99, 235, 0.20) 25%, rgba(124, 58, 237, 0.30) 50%, rgba(37, 99, 235, 0.20) 75%, transparent 100%) !important;
+}
+[data-theme="light"] .lp-footer::after {
+    background: radial-gradient(ellipse, rgba(37, 99, 235, 0.05) 0%, transparent 70%) !important;
+}
+[data-theme="light"] .footer-newsletter {
+    border-bottom-color: var(--border) !important;
+}
+[data-theme="light"] .footer-newsletter-label {
+    color: #2563EB !important;
+}
+[data-theme="light"] .footer-newsletter-input-wrap input {
+    background: #FFFFFF !important;
+    border-color: var(--border) !important;
+    color: var(--text-primary) !important;
+}
+[data-theme="light"] .footer-newsletter-input-wrap input:focus {
+    border-color: #2563EB !important;
+    background: rgba(37, 99, 235, 0.04) !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10) !important;
+}
 [data-theme="light"] .footer-brand-name {
     background: linear-gradient(135deg, #2563EB, #7C3AED) !important;
     -webkit-background-clip: text !important;
@@ -396,9 +418,15 @@ a {
 [data-theme="light"] .footer-brand-name svg {
     color: #2563EB !important;
     -webkit-text-fill-color: initial !important;
+    filter: drop-shadow(0 0 5px rgba(37, 99, 235, 0.30)) !important;
 }
 [data-theme="light"] .footer-brand-desc {
     color: var(--text-muted) !important;
+}
+[data-theme="light"] .footer-status-badge {
+    background: rgba(16, 185, 129, 0.08) !important;
+    border-color: rgba(16, 185, 129, 0.20) !important;
+    color: #059669 !important;
 }
 [data-theme="light"] .footer-col h4 {
     color: var(--text-subtle) !important;
@@ -422,8 +450,18 @@ a {
     transform: translateY(-2px);
 }
 [data-theme="light"] .footer-bottom {
-    border-color: var(--border) !important;
+    border-top-color: var(--border) !important;
+}
+[data-theme="light"] .footer-bottom-copy,
+[data-theme="light"] .footer-bottom-love {
     color: var(--text-subtle) !important;
+}
+[data-theme="light"] .footer-bottom-links a {
+    color: var(--text-muted) !important;
+}
+[data-theme="light"] .footer-bottom-links a:hover {
+    color: var(--text-primary) !important;
+    background: rgba(17, 24, 39, 0.04) !important;
 }
 
 /* Blobs */

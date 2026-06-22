@@ -469,17 +469,42 @@ export default function LandingPage() {
 
             {/* ════════ FOOTER ════════ */}
             <footer className="lp-footer" id="contact">
+
+                {/* ── Newsletter Bar ── */}
+                <div className="footer-newsletter">
+                    <div className="footer-newsletter-text">
+                        <span className="footer-newsletter-label">Stay in the loop</span>
+                        <p>Get product updates, tips, and early access to new features.</p>
+                    </div>
+                    <form className="footer-newsletter-form" onSubmit={e => e.preventDefault()}>
+                        <div className="footer-newsletter-input-wrap">
+                            <FaEnvelope className="footer-newsletter-icon" />
+                            <input type="email" placeholder="Enter your email address" />
+                        </div>
+                        <button type="submit" className="btn-gradient">Subscribe</button>
+                    </form>
+                </div>
+
+                {/* ── Divider ── */}
+                <div className="footer-divider" />
+
+                {/* ── Main Grid ── */}
                 <div className="footer-grid">
                     {/* Brand */}
-                    <div>
+                    <div className="footer-brand-col">
                         <div className="footer-brand-name"><FaVideo />MeetVerse</div>
                         <p className="footer-brand-desc">
-                            Modern video conferencing platform for teams, students, and businesses worldwide.
+                            Modern video conferencing built for teams, students, and businesses worldwide. Simple, fast, and free.
                         </p>
+                        {/* Status badge */}
+                        <div className="footer-status-badge">
+                            <span className="footer-status-dot" />
+                            All systems operational
+                        </div>
                         <div className="footer-socials">
-                            <div className="social-icon"><FaGithub /></div>
-                            <div className="social-icon"><FaLinkedin /></div>
-                            <div className="social-icon"><FaTwitter /></div>
+                            <a href="#" className="social-icon" aria-label="GitHub"><FaGithub /></a>
+                            <a href="#" className="social-icon" aria-label="LinkedIn"><FaLinkedin /></a>
+                            <a href="#" className="social-icon" aria-label="Twitter"><FaTwitter /></a>
                         </div>
                     </div>
 
@@ -492,28 +517,34 @@ export default function LandingPage() {
                         <a href="#testimonials">Testimonials</a>
                     </div>
 
-                    {/* Legal */}
+                    {/* Company */}
                     <div className="footer-col">
                         <h4>Company</h4>
                         <a href="#">About</a>
                         <a href="#">Blog</a>
                         <a href="#">Careers</a>
-                        <a href="#">Press</a>
+                        <a href="#">Press Kit</a>
                     </div>
 
-                    {/* Contact */}
+                    {/* Legal & Contact */}
                     <div className="footer-col">
-                        <h4>Contact</h4>
-                        <a href="#"><FaEnvelope style={{ marginRight: 6 }} />support@meetverse.io</a>
-                        <a href="#"><FaGlobe style={{ marginRight: 6 }} />meetverse.io</a>
+                        <h4>Legal</h4>
+                        <a href="#"><FaEnvelope className="footer-link-icon" />support@meetverse.io</a>
+                        <a href="#"><FaGlobe className="footer-link-icon" />meetverse.io</a>
                         <a href="#">Privacy Policy</a>
                         <a href="#">Terms of Service</a>
                     </div>
                 </div>
 
+                {/* ── Bottom Bar ── */}
                 <div className="footer-bottom">
-                    <span>© 2026 Gopal Kumar. All rights reserved.</span>
-                    <span>Built with ❤️ for the future of work</span>
+                    <span className="footer-bottom-copy">© 2026 Gopal Kumar. All rights reserved.</span>
+                    <div className="footer-bottom-links">
+                        <a href="#">Privacy</a>
+                        <a href="#">Terms</a>
+                        <a href="#">Cookies</a>
+                    </div>
+                    <span className="footer-bottom-love">Built with ❤️ for the future of work</span>
                 </div>
             </footer>
         </div>
