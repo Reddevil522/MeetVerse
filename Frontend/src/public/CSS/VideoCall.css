@@ -331,8 +331,10 @@
     align-content: center;
     justify-content: center;
     transition: padding 0.3s;
-    grid-auto-rows: minmax(0, 1fr);
-    /* ← YE LINE ADD KARO */
+    grid-auto-rows: minmax(200px, 1fr);
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
 }
 
 .vc-grid.chat-open {
@@ -352,12 +354,13 @@
 
 .vc-grid.count-3,
 .vc-grid.count-4 {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 }
 
 .vc-grid.count-5,
 .vc-grid.count-6 {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    align-content: start;
 }
 
 /* Video tile */
