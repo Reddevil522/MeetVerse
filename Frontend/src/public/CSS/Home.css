@@ -62,12 +62,16 @@
 
 .sidebar-logo-text {
     opacity: 1;
-    transition: opacity 0.2s;
+    max-width: 200px;
+    overflow: hidden;
+    transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     white-space: nowrap;
 }
 
 .sidebar.collapsed .sidebar-logo-text {
     opacity: 0;
+    max-width: 0;
     pointer-events: none;
 }
 

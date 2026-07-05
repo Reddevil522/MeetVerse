@@ -173,7 +173,7 @@ export default function Home() {
                 {/* Logo */}
                 <Link to="/" className="sidebar-logo">
                     <FaVideo />
-                    <span className="sidebar-logo-text">MeetVerse</span>
+                    {!sidebarCollapsed && <span className="sidebar-logo-text">MeetVerse</span>}
                 </Link>
 
                 {/* Collapse toggle */}
